@@ -646,6 +646,12 @@ class PowerBlockService : AccessibilityService() {
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) return
+        // Never scan our own screens: an uninstall is confirmed in the launcher
+        // or the installer, never inside PowerLocksss. Scanning our own huge
+        // Settings tree on every scroll event is what made scrolling stutter
+        // after the any-package change — so our own package is skipped here.
+        val pkg = e.packageName?.toString() ?: return
+        if (pkg == packageName) return
         val now = SystemClock.uptimeMillis()
         if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 200) return
         lastUninstallScan = now

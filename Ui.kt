@@ -298,18 +298,8 @@ fun Context.edit(hint: String, number: Boolean): EditText {
 fun Context.dlg(): AlertDialog.Builder =
     AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
 
-/** A ScrollView whose fling is capped, so one swipe moves a short, controllable
- * distance instead of flying past several cards. Used by the very long Settings
- * screen, where a normal fling jumps in big chunks and is hard to stop on one
- * card. Slow dragging is untouched — only the fling speed is limited. */
-class CalmScrollView(ctx: Context) : ScrollView(ctx) {
-    override fun fling(velocityY: Int) {
-        super.fling(velocityY.coerceIn(-4000, 4000))
-    }
-}
-
-fun Context.page(calmFling: Boolean = false): Pair<ScrollView, LinearLayout> {
-    val sv: ScrollView = if (calmFling) CalmScrollView(this) else ScrollView(this)
+fun Context.page(): Pair<ScrollView, LinearLayout> {
+    val sv = ScrollView(this)
     sv.isVerticalScrollBarEnabled = false
     val col = LinearLayout(this)
     col.orientation = LinearLayout.VERTICAL
