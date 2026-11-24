@@ -174,6 +174,12 @@ class PowerBlockService : AccessibilityService() {
     private var lastCheckedUrl = ""
     private var lastSiteOverlayAt = 0L
     private var lastSiteOverlayDomain = ""
+    // Uninstall protection: apps whose uninstall dialog is blocked instantly,
+    // lock or no lock. Labels are cached and rebuilt only when the list changes.
+    private var uninstallProtectPkgs: Set<String> = emptySet()
+    private var uninstallProtectLabels: Map<String, String> = emptyMap()
+    private var lastUninstallScan = 0L
+    private var lastUninstallBlock = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -455,6 +461,10 @@ class PowerBlockService : AccessibilityService() {
             if (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pkg != packageName) {
                 lastForegroundPkg = pkg
             }
+            // Uninstall protection: runs before the lock-gated routing below —
+            // a protected app's uninstall must be blocked instantly even with
+            // no lock running.
+            onUninstallAttempt(e)
             // URL detection (site block, second option) and keyword block
             // (third option): the browser address bar changed, a browser
             // window just opened, or a page loaded in an already-open tab.
@@ -597,6 +607,61 @@ class PowerBlockService : AccessibilityService() {
             Extra.logAttempt(this, "settings", e.packageName?.toString() ?: "")
             performGlobalAction(GLOBAL_ACTION_HOME)
         }
+    }
+
+    /** Protected apps' labels, cached and rebuilt only when the list changes. */
+    private fun uninstallProtectLabels(): Map<String, String> {
+        val pkgs = Extra.uninstallProtectApps(this)
+        if (pkgs == uninstallProtectPkgs) return uninstallProtectLabels
+        uninstallProtectPkgs = pkgs
+        val pm = packageManager
+        val map = HashMap<String, String>()
+        for (pkg in pkgs) {
+            val label = try {
+                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+            } catch (_: Exception) {
+                ""
+            }
+            if (label.isNotBlank()) map[pkg] = label
+        }
+        uninstallProtectLabels = map
+        return map
+    }
+
+    /**
+     * Uninstall protection (instant, no lock needed): the installer — or a
+     * system screen such as App info — is showing an uninstall confirmation
+     * for a protected app ("Uninstall" + the app's name in the window text).
+     * The block fires the moment the dialog appears: no 300 ms wait like
+     * [onGuarded], only a 1 s dedup against repeats. The user asked for this
+     * to be instant because uninstall is the sensitive one. Note this also
+     * sends Home from a protected app's App info page, since that page
+     * carries the same "Uninstall" button — that is part of the protection.
+     */
+    private fun onUninstallAttempt(e: AccessibilityEvent) {
+        val type = e.eventType
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) return
+        val pkg = e.packageName?.toString() ?: return
+        if (!isGuarded(pkg)) return
+        val now = SystemClock.uptimeMillis()
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 200) return
+        lastUninstallScan = now
+        val labels = uninstallProtectLabels()
+        if (labels.isEmpty()) return
+        val root = rootInActiveWindow ?: return
+        val sb = StringBuilder()
+        collectVisibleText(root, sb)
+        if (sb.isEmpty()) return
+        val t = sb.toString()
+        val hasUninstallWord = t.contains("Uninstall", ignoreCase = true) || t.contains("আনইনস্টল")
+        if (!hasUninstallWord) return
+        val hit = labels.entries.firstOrNull { (_, label) -> t.contains(label) } ?: return
+        if (now - lastUninstallBlock < 1000) return
+        lastUninstallBlock = now
+        Extra.logAttempt(this, "uninstall", hit.key, hit.value)
+        performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {

@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "73"
+    const val BUILD_ID = "74"
 
     // ---------- extend time (never reduce) ----------
 
@@ -118,7 +118,7 @@ object Extra {
 
     /**
      * kind: "power", "settings", "focus", "appblock", "reels", "msgsearch", "limit",
-     * "site" (DNS), "url" (address-bar URL), "kw_url" (keyword in a URL),
+     * "uninstall", "site" (DNS), "url" (address-bar URL), "kw_url" (keyword in a URL),
      * "kw_typed" (keyword typed in a text field) or "kw_visible" (keyword in
      * visible screen text). At most one entry per kind every 3 seconds.
      * [pkg] is the app the user was kicked out of; [detail] is what matched
@@ -191,6 +191,18 @@ object Extra {
         } catch (e: Exception) {
             Log.e(TAG, "clearAttempts failed", e)
         }
+    }
+
+    // ---------- uninstall protection (instant, no lock needed) ----------
+
+    /** Apps whose uninstall is blocked instantly (comma-separated packages in settings). */
+    fun uninstallProtectApps(ctx: Context): Set<String> {
+        val s = Store.settings(ctx).getString("uninstall_protect_apps", "") ?: ""
+        return s.split(",").filter { it.isNotEmpty() }.toSet()
+    }
+
+    fun setUninstallProtectApps(ctx: Context, apps: Set<String>) {
+        Store.settings(ctx).edit().putString("uninstall_protect_apps", apps.joinToString(",")).apply()
     }
 
     // ---------- focus mode ----------
@@ -1870,6 +1882,45 @@ fun MainActivity.uninstallBlockCard(): View {
     return c
 }
 
+// UI: uninstall protection for other apps (Settings) — instant, no lock needed.
+// Pick the apps; if someone tries to uninstall one of them, the uninstall
+// dialog is blocked the moment it appears (the service watches the
+// installer, not the lock). This is separate from the device-admin
+// uninstall block above, which only protects PowerLock 2 itself.
+fun MainActivity.uninstallProtectCard(): View {
+    val c = card()
+    c.addView(section(L.t("Uninstall protection", "আনইনস্টল সুরক্ষা")))
+    c.addView(
+        tv(
+            L.t(
+                "If someone tries to uninstall a protected app, it is blocked instantly — no lock needed.",
+                "সুরক্ষিত অ্যাপ আনইনস্টল করতে গেলে সাথে সাথে ব্লক হবে — লক লাগবে না।"
+            ),
+            12f, C.muted
+        ),
+        lp(MATCH, WRAP, t = dp(4))
+    )
+    val count = Extra.uninstallProtectApps(this).size
+    val countBn = L.num(count.toString())
+    c.addView(
+        row(
+            L.t("Protected apps", "সুরক্ষিত অ্যাপ"),
+            L.t("$countBn app(s) protected", "$countBn টি অ্যাপ সুরক্ষিত"),
+            tv(countBn, 18f, C.primary, 1)
+        ),
+        lp(MATCH, WRAP, t = dp(8))
+    )
+    val pick = outlineBtn(L.t("Choose apps", "অ্যাপ বাছুন"), C.primary)
+    pick.setOnClickListener {
+        groupAppPicker(Extra.uninstallProtectApps(this)) { newSet ->
+            Extra.setUninstallProtectApps(this, newSet)
+            go(3)
+        }
+    }
+    c.addView(pick, lp(MATCH, dp(48), t = dp(10)))
+    return c
+}
+
 // =====================================================================
 // UI: lock profiles (Settings)
 // =====================================================================
@@ -3403,6 +3454,7 @@ fun MainActivity.attemptsCard(): View {
     var nMsgSearch = 0
     var nLimit = 0
     var nSite = 0
+    var nUninstall = 0
     for ((t, k) in list) {
         if (t >= today) nToday++
         if (t >= week) nWeek++
@@ -3413,6 +3465,7 @@ fun MainActivity.attemptsCard(): View {
             "reels" -> nReels++
             "msgsearch" -> nMsgSearch++
             "limit" -> nLimit++
+            "uninstall" -> nUninstall++
             "site", "url", "kw_url", "kw_typed", "kw_visible" -> nSite++
             else -> nFocus++
         }
@@ -3451,8 +3504,8 @@ fun MainActivity.attemptsCard(): View {
     c.addView(
         tv(
             L.t(
-                "Power menu: $nPower · App settings: $nSettings · Focus apps: $nFocus · App block: $nAppBlock · Reels block: $nReels · Search block: $nMsgSearch · Daily limit: $nLimit · Site block: $nSite",
-                "পাওয়ার মেনু: $nPower · অ্যাপ সেটিংস: $nSettings · ফোকাস অ্যাপ: $nFocus · অ্যাপ ব্লক: $nAppBlock · রিলস ব্লক: $nReels · সার্চ ব্লক: $nMsgSearch · দৈনিক লিমিট: $nLimit · সাইট ব্লক: $nSite"
+                "Power menu: $nPower · App settings: $nSettings · Focus apps: $nFocus · App block: $nAppBlock · Reels block: $nReels · Search block: $nMsgSearch · Daily limit: $nLimit · Site block: $nSite · Uninstall block: $nUninstall",
+                "পাওয়ার মেনু: $nPower · অ্যাপ সেটিংস: $nSettings · ফোকাস অ্যাপ: $nFocus · অ্যাপ ব্লক: $nAppBlock · রিলস ব্লক: $nReels · সার্চ ব্লক: $nMsgSearch · দৈনিক লিমিট: $nLimit · সাইট ব্লক: $nSite · আনইনস্টল ব্লক: $nUninstall"
             ),
             12f, C.muted
         ),
@@ -3472,6 +3525,7 @@ private fun diagReasonLabel(kind: String): String = when (kind) {
     "focus" -> L.t("Focus app block", "ফোকাস অ্যাপ ব্লক")
     "appblock" -> L.t("App block", "অ্যাপ ব্লক")
     "limit" -> L.t("Daily limit", "দৈনিক লিমিট")
+    "uninstall" -> L.t("Uninstall block", "আনইনস্টল ব্লক")
     "reels" -> L.t("Reels block", "রিলস ব্লক")
     "msgsearch" -> L.t("Search block", "সার্চ ব্লক")
     "site" -> L.t("Site block (DNS)", "সাইট ব্লক (DNS)")
@@ -3515,12 +3569,12 @@ private fun MainActivity.diagRow(ev: Extra.DiagEvent): View {
     return row
 }
 
-/** Diagnostics log card (Statistics tab): the last 30 blocks, newest first. */
+/** Diagnostics log card (Statistics tab): the last 30 blocks, newest first. Tap it for the full log in a separate window. */
 fun MainActivity.diagCard(): View {
     val c = card()
     c.addView(section(L.t("Diagnostics", "ডায়াগনস্টিক")))
     c.addView(
-        tv(L.t("Why each block fired — newest first.", "প্রতিটি ব্লক কেন হলো — নতুন আগে।"), 12f, C.muted),
+        tv(L.t("Why each block fired — tap for the full log.", "প্রতিটি ব্লক কেন হলো — পুরো লগ দেখতে ট্যাপ করুন।"), 12f, C.muted),
         lp(MATCH, WRAP, t = dp(4))
     )
     val list = Extra.attemptsFull(this).takeLast(30).reversed()
@@ -3537,7 +3591,37 @@ fun MainActivity.diagCard(): View {
         go(2)
     }
     c.addView(clear, lp(MATCH, WRAP, t = dp(12)))
+    c.setOnClickListener { showDiagDialog() }
     return c
+}
+
+/** Full diagnostics log in a separate window (dialog): the last 100 blocks, newest first. */
+private fun MainActivity.showDiagDialog() {
+    val list = Extra.attemptsFull(this).takeLast(100).reversed()
+    val body = LinearLayout(this)
+    body.orientation = LinearLayout.VERTICAL
+    val sv = ScrollView(this)
+    val inner = LinearLayout(this)
+    inner.orientation = LinearLayout.VERTICAL
+    inner.setPadding(dp(20), dp(4), dp(20), dp(4))
+    if (list.isEmpty()) {
+        inner.addView(tv(L.t("No blocks yet.", "এখনো কোনো ব্লক হয়নি।"), 14f, C.muted))
+    } else {
+        for (ev in list) {
+            inner.addView(diagRow(ev), lp(MATCH, WRAP, t = dp(10)))
+        }
+    }
+    sv.addView(inner)
+    body.addView(sv, lp(MATCH, dp(420)))
+    dlg()
+        .setTitle(L.t("Diagnostics", "ডায়াগনস্টিক"))
+        .setView(body)
+        .setPositiveButton(L.t("Clear log", "লগ মুছুন")) { _, _ ->
+            Extra.clearAttempts(this)
+            go(2)
+        }
+        .setNegativeButton(L.t("Close", "বন্ধ করুন"), null)
+        .show()
 }
 
 // =====================================================================
