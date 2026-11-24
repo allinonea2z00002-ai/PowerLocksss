@@ -5,140 +5,38 @@
 # thisandagain/washyourmouthoutwithsoap, jwils0n/profanity-filter, ConsoleTVs/Profanity,
 # chucknorris-io/swear-words, Sigmakib2/Nirmol (Bengali). One keyword per line, lowercase.
 # Entries under 3 characters were dropped (they match whole country domains like .ge/.ky).
-mami khod়
-অমাইনশের জাত
-অমানুষের বাচ্চা
+# Cleaned 2026-11-24: adult/sexual terms only (porn, sex, erotic, body, fetish, adult industry, Bengali sexual words). General profanity, insults, slurs, violence, drugs and ordinary words removed per user request. 4 core words added: পর্ন, চটি, চটি গল্প, sex tape.
 অশ্লীল
-আচুদা
-আচোদা
-আবাল
-আবাল চোদা
-আবাল জাতের মায়েরে চুদি
-আবালচোদা
-ইতর
-ইবলিশ
-উপ্তা কইরা
-উপ্তা কইরা চুদমু
-উষ্টা খা
-একদম ভোঁদার ভিতরে হান্ডায়া রাইখা দিমু
-ঐ শালী
-ওত্তার মারে বাপ
 কনডম
 কন্ডম
 কন্ডমের
-কাইল্লা
-কাচ কলা
-কাঠ্ঠির বেট্যা
-কান্দে ফালাইয়া তর মায়েরে চুদি
-কামলাচুদা
-কালা
-কিরে চুদানির ফুয়া
-কুত্তা
-কুত্তা বাচ্চা
-কুত্তা মরা
-কুত্তাচোদা
-কুত্তামারা
-কুত্তার
-কুত্তার বাচ্চা
-কুত্তার বাচ্ছা
-কুত্তার হোল
-কুত্তারগু
-কুত্তি
-খবিশ
-খবিশ চোদা
-খাংকির
-খাইস্টা
-খাওয়া মাল
-খাঙ্কি
-খাঙ্কির
-খাঙ্কির পোলা
-খাঙ্কির বউ
-খাঙ্কিরপোলা
 খানকি
 খানকি মাগী
-খানকিমাগী
 খানকির
-খানকির ছেলে
-খানকির পুলা কয় কী
-খানকির পোলা
-খানকির ফুয়া
-খানকিরপোলা
-খানকীর
-খান্কি মাগির পোলা
-খান্কির
-খারাইয়া গেসিল
-গরম ডিম দিমু
-গরুচোর
-গাঁজা
-গাউড়াা
-গাজাখুর
-গাঞ্জাখর
-গাধা
-গান্জা
-গান্জাখোর
-গান্ডু
-গাড় মারা খা
-গু এর গাইদর
-গু-খা
 গুদ
-গুদির ব্যাটা
 গুদের বাল
-গুয়া মারানী
-গুয়ার ভিতরে বিষ ফরা
-গুশখোর
-গুয়া
-গুয়া-মারা
-গুয়ার ভিতরে
-গো আর জুতা
-গোদা
-গোয়ায় বিগার বেশি
-গোস্তের লাঠি সাটামু
-গোয়া
-গোয়ার
 ঘুপশি মাগি
-চদা
-চামছা
-চামড়া ছুইল্লা লবণ লাগামু
-চুইদা
-চুইদ্দা
 চুট মারানী খাঙ্কি মাগী
-চুতমারানি
-চুতমারানির
-চুতমারানির ফুয়া
-চুতমারানীর পোলা
 চুদন
 চুদনা
 চুদনা মাগী
-চুদনাগিরি
 চুদনার
-চুদমারানি
 চুদমু
 চুদা
-চুদা দিমু
 চুদা-খা
 চুদাও
 চুদাচুদি
 চুদানি
-চুদানির
-চুদানির পো
-চুদানিরপো
 চুদার
 চুদাস
 চুদি
 চুদির
-চুদির পোলা
 চুদির ভাই
-চুদিরভাই
 চুদে
 চুদেরা
 চুদ্দা
 চুদ্দে
 চুদ্মু
-চুধিরভাই
-চুষে
-চোদায়বার
-চোট্টা
-চোতমারানি
 চোদ
 চোদন
 চোদনা
@@ -146,168 +44,25 @@ mami khod়
 চোদনে
 চোদা
 চোদাও
-চোদানীর পোলা
 চোদার
 চোদে
 চোদে না দিনতা সারা গুদে আলতা
-চোধে না দিনতা সারা গুধে আলতা
-ছামা
-ছামার পো
-ছামারপো
-ছিনাল
-ছিনাল ফুরি
-ছেন
-ছোট ধন
-ছ্যাসরা
-জঙ্গি
-জাউরা
-জানোয়ার
-জামাত
-জারজ
-জারজ পোলা
-জারজের মায়েরে চুদি
-জারদ
-জুতা পিডা
-জূতামু
 টিটিকি চুদা
-টুট
-টেংরি ভাইংগা হাতে ধরায়া দিমু
-ঠাপ
-ঠ্যাঁঙ কাইট্টা পুটকি দা ভইরা দুম
-ঠ্যাঙ্গা
-ডুকাইয়া দিলাম
-ডুকামু
-ঢুকাই
-ঢুকাইয়া
-ঢুকামু
-তর পুটকিত ধান ছড়াইয়া চড়ুই দিয়া খাওয়ামু
-তর বাপ
 তর বাপপের হোল তর বউয়ের ভোদাতে
-তর বাপের
 তর ভোদায় বিলাই হ্যাচড়া
-তর মাকে চু*দি
-তর মার
 তর মায়রে চুদি
-তর মায়রে বাপ
-তর মায়ের
-তর মায়ের ঐখানে বিছাতু পাতা
-তর মায়েরে চিচিং ফাক
-তালেবান
-তিনকোনা
-তুই মর
-তুই মুরি খা
-তুই রোহিঙ্গা
 তো মায়রে চুদি
-তোব্বার আন্ডা
-তোর জাঙ্গীয়া খুইল্যা আগুন লাগায় দিমু
-তোর নানির হেডা
-তোর হউরিরে ডিগবাজী
-দালাল
-দুদ
-দুদের
-দুরু আলারফুত আলা
-দেশবন্ধু
-ধইঞ্চা
-ধুকাই
 ধুর বাল
-ধুর-কানা
-ধুরু মাদারচদ
 ধোন
-ধোন কাইট্টা কুত্তা দিয়া খাওয়ামু
 ধোনের বাল
-নটি
 নটি মাগি
 নটি মাগির ঝি
-নটি মাগির পোলা
-নটি মাগীর পোলা
-নটির
-নডির পুলারা
-নলা
-নস্টা
-নাটকির
-নাটকির পো
-নিগ্রো
-নিবীর্জ
-নির্লজ্জ
 নুনু
 নুনু চোষা পোলাপাইন
 নুনুর বাল
-নেংটা
-নেশাখোর
-পকিস্তানি
-পতিতা
-পলা
-পাইখানা
-পাছা
-পাছা-মারা
-পাছার
-পাছায়
-পাদ
-পুকটি
-পুকটি মারা খা
-পুকটিতে ভর
-পুট
-পুটকি
-পুটকি চাটা কুত্তা
 পুটকি চোদা
-পুটকি মারা খা
-পুটকি-মারা
-পুটকিই
-পুটকিতে
-পুটকিতে আঙ্গুল ঢুকিয়ে বয়া থাক
-পুটকিতে বাশ দিমু
-পুটকিমারা
-পুটকির
-পুটু
-পুত
-পুতকি
-পুতকির
-পুতে
-পুতেরে
-পুলা
-পেংটির পোলা
-পেদামু
 পেন্টি চোদা
-পো।
 পোদ
-পোন ফাটামু
-পোন মার
-পোন মারানি
-পোন্দাইলাম
-পোলা।
-পোলার
-পোলারে
-পোলায়
-ফকিন্নিচোদারা
-ফকিন্নির-পুত
-ফকিরের বাচ্চা
-ফটকা
-ফাক
-ফালাইয়া
-ফালামু
-ফুনগা
-বংশ বারা থাপাই
-বইতল
-বউকানা
-বকচয়
-বকলম
-বগা
-বগা আমার
-বলদ
-বলদে
-বাঁড়া
-বাইঞ্চুদ
-বাইঞ্চোদ
-বাইট্টা
-বাইনচোদ
-বাইনঞ্চোদরা
-বাইন্দা
-বাদাইম্মা
-বানচোত
-বান্দির
-বান্দীরপোলা
-বাপের আগে বাল
-বারোভাতারি
 বাল
 বাল ছাল
 বাল ছাড়া
@@ -318,60 +73,17 @@ mami khod়
 বাল ফালায়া আটিঁ বান্ধা
 বাল ফালায়া খালে নামানো
 বাল-ছাল
-বালছাল
-বালছালের
 বালি দিয়া চুদমু তরে খাঙ্কি মাগী
-বালে
-বালে বালে গিট্টু
-বালের
-বালের রয়েল বেঙ্গল উকুন
-বাশ
-বিচি
-বিচিতে
 বিচির বাল
-বুকচুদ
-বুদা
-বুস্কির
-বেইসশা
-বেইসসার পোলা
-বেক্কল
 বেশ্যা
 বেশ্যা চোদা
 বেশ্যা মাগি
 বেশ্যা মাগী
 বেশ্যার বেটা
 বেসশা মাগি
-বৈতাল মাগীর চৈতাল পোলা
-বোকা আচোদা
-বোকা চোদা
-বোকাচণ্ডী
-বোকাচুদা
-বোকাচোদা
-বোকাচোদাই
-বোকাচোদার
-বোকাচোদারা
-বোনচোদ
-ভইরা
-ভইরা দিমু
-ভইড়া
-ভইড়া দিমু
-ভগচোদ
-ভদাই
-ভরে
 ভাতার চুদা
-ভাদাইমা
-ভাদাইমার
-ভাদাইম্মা
-ভাদাইম্যা
-ভিত্রে
-ভুদার বেটা
 ভুষ্কি মাগী
-ভুসকি
-ভুস্কি
-ভুস্কি চুতমারানী
-ভুস্কি মাগির পোলা
 ভুস্কি মাগী
-ভেড়াচ্চোদা
 ভৈরব মাগী
 ভোঁদা
 ভোঁদার জ্বালা বেশি
@@ -380,217 +92,23 @@ mami khod়
 ভোদার
 ভোদার বাল
 ভোদায়
-মদখোর
-মাংগু
-মাংগের নাতী
-মাইগ্যা
-মাইন্দার
-মাইন্দারের
-মাইরে বাপ
 মাউড়া চোদা
 মাগি
 মাগিখোর
 মাগিবাজ
 মাগির
-মাগির ফুয়া
 মাগী
-মাগীর
-মাগীর ছাওয়াল
-মাঙ্গি
-মাঙ্গির
-মাঙ্গির পুত
-মাঙ্গের নাতি
-মাঙ্গের পোলা
-মাথামোটা
 মাদার চোদ
-মাদারচুদ
-মাদারচুদে
-মাদারচোদ
-মাদারটোষ্ট
-মাদারটোস্ট
-মাদারফাকার
-মাদারি
-মাদারিরা
-মান্দার
-মামী খোড়
 মায়রে চুদী
-মারা
-মারানি
-মারানির
-মারানী
-মারি
-মারে
-মাল
-মালউন
-মালটার
-মাসিকের
-মাসিকের রক্ত
-মায়রে
-মিরজাফর
-মোজ্ঞ্য়র ফুয়া
-ম্যাঙ্গের-পোলা
-যারয পোলা
-রসালো চুৎ
-রাজাকার
-রেন্ডি
-লটির পো
-লটির বেটা
-লাগাই
-লাগাইয়া
-লাগায়
-লাগায়া
-লাথ্থি দিমু
-লাদেন
-লুইচ্চা
-লেংটা
-লেউরা
 লেওড়া চুদা
-লেওরা
-লেঙ্গটা চুতমারানী
-লেঙ্গটা বাবার জারজ সন্তান
-লেদানি
 লেসবিয়ান
-লোটির বাচ্চা
-ল্যাং
-ল্যাংটা
-ল্যাউড়ার পুত
 ল্যাওড়া
-ল্যাঙ্গটা
-ল্যাদানী
-শাউয়া
-শাউয়ার
-শাওয়া
-শাওয়ার
-শাখামৃগ
-শালা
-শালার
-শালার পো
-শালার পো শালা
-শালিগো
-শুইয়া
-শুওর
-শুটকি
-শুালা
-শুয়র
-শুয়রের
-শুয়রের বাচ্চা
-শুয়ার
-শুয়োরের বাচ্চা
-শ্লা
-শয়তান
-সাউয়া
-সাওয়াচোদা
-সামারপো
-সালা
-সালারপুত
-সিনাল মাগীর পু
-সুদখোর
-সুমন্দি
 সেক্স
-সোদন
-সোদনে
 স্যাটার বাল
-স্যার এর গুয়া চাটা পোলাপাইন
-হাউয়া
-হাউয়ার
-হাউয়ার নাতি
-হাউয়ার পো
-হাগা
-হাগাই
-হাগু
-হান্দাই
-হারামখোর
-হারামজাদা
-হারামজাদি
-হারামজাদী
-হারামি
-হারামির বাচ্চা
-হালা
 হালা ল্যাওড়া চোদা
-হালার
-হালারপুত
-হালাায় ভন্ড
-হালায়
-হাারামজাদা
-হিজরা
-হিজলা
-হিজড়া
-হিরোইঞ্চি
-হুগা
-হুগামারা
-হুমুন্দির পুত
-হুমুন্দির-পুত
-হেটা
-হেডা
-হেডাম
-হেডার
-হেডার ফুয়া
-হেডারপো
-হেডারপোলা
-হোগা
-হোগা চাটা
-হোগামারা
-হোগার
-হোগার নাতী
-হোগার ভিতরে
-হোগায়
-হোল
-হোল টাইনা
-হোলচাটা
-হোলের চুলকানী
-"4r5e"
-"5h1t"
-"5hit"
-*damn
-*dyke
-*fuck*
-*shit*
-1 man 1 jar
-1m1j
-1man1jar
-2 girls 1 cup
-2g1c
-2girls1cup
-4r5e
-5h1t
-5hit
-5ht
-666
-@$$
-a s s
-a s shole
-a55
-a55hole
-a_s_s
-abal
-abal coda
-abal jater mayere cudi
-abalcoda
-abbo
-abeed
-abortion
-abuse
 aclit
-acoda
-acrotomophile
-acrotomophilia
-acuda
-addicts
 adick
 adult
-aeolus
-africoon
-ahole
-aids
-alabama hot pocket
-alabama porch monkey
-alabama tuna melt
-alaskan pipeline
-algophile
-algophilia
-alligator bait
-alligatorbait
-amcik
 anal
 anal assassin
 anal astronaut
@@ -600,61 +118,17 @@ analannie
 analicker
 analprobe
 analsex
-andskota
 anilingus
 anus
-ape shit
-ape-shit
-apeshit
-apotemnophile
-apotemnophilia
-ar5e
-arabush
-arabushs
-areola
-areole
-argie
-arian
-armo
-armos
 aroused
-arrse
-arschloch
-arse
-arse bandit
-arse*
-arsehole
-aryan
-as$
-asanchez
-ash0le
-ash0les
-asholes
 ass
-ass bandit
-ass clown
-ass face
-ass fucker
 ass hole
-ass load
-ass monkey
-ass much
-ass out
-ass packer
 ass reamer
-ass whacker
-ass wipe
-ass-fucker
-ass-hat
-ass-pirate
-assbag
-assbagger
 assbandit
 assbang
 assbanged
 assbanger
 assbangs
-assbite
 assblaster
 assclown
 asscock
@@ -665,26 +139,8 @@ assed out
 asses
 assface
 assfuck
-assfucker
-assfukka
-assgoblin
-assh0le
-assh0lez
 asshat
-asshead
-assho1e
-asshole
-assholes
-assholz
-asshopper
-asshore
-assjacker
 assjockey
-asskiss
-asskisser
-assklown
-asslick
-asslicker
 assload
 asslover
 assman
@@ -692,468 +148,68 @@ assmaster
 assmonkey
 assmunch
 assmuncher
-assnigger
 assout
 asspacker
 asspirate
 asspuppies
 assrammer
-assranger
 assreamer
 assshit
-assshole
 asssucker
 asswad
 asswhacker
-asswhole
 asswhore
 asswipe
 asswipes
 auto erotic
 autoerotic
-ayir
-azazel
-azz
-azzhole
-b a s t a r d
-b i t c h
-b o o b
-b!+ch
-b!tch
-b!tchin
-b*tch
-b00b
-b00b*
-b00bies
-b00biez
-b00bs
-b00bz
-b17ch
-b1tch
-b7ch
-baal bichi
-baal cherah
-baal cherh
-baal chhero
-baal halaidheese
 baba choda rendi
-babarchod
-babeland
-babes
 babur choda
-baby batter
-baby gravy
-baby juice
-babybatter
-backdoor
-backdoorman
-badaimma
-badfuck
-bagging
-bainchod
-baincod
-baincud
-bainda
-bainoncodra
-baitta
-bakchod
-bal
-bal chal
-bal chera
-bal falaiya ati ban
-bal falao
-bal falaya ati bandha
-bal falaya khale namano
-bal pakna
-bal-chal
-balchal
-balchaler
-bale
-bale bale gittu
-baler
-baler royel benggol ukun
 bali diya cudmu tore khangki magi
-ball batter
-ball breaker
-ball buster
-ball gag
-ball gravy
-ball kicking
-ball licking
-ball sack
-ball sucking
-ball-gag
-ball-kicking
-ball-licking
-ball-sucking
 ballbag
-ballcuzi
-baller
-ballgag
-balling
-balllicker
 balls
 ballsack
-bampot
-banchode
-bancot
-bandii
-bandir
-bandirpola
-bang bros
-bang bus
-bangbro
 bangbros
-bangbus
-bangchod er baccha
-banger
-banging
-bangir pula
-baper age bal
-bara
-bareback
-barely legal
-barelylegal
 barenaked
-barf
-barface
-barfface
-barovatari
-bash
-bassterd
-bassterds
-bastard
-bastardo
-bastards
-bastardz
-basterds
-basterdz
-bastinado
-bat shit
-batshit
-batty boi
-batty boy
-battyboi
-battyboy
-bawdy
-bazongas
-bazooms
-bbw
-bch
 bdsm
-bean flicker
-bean queen
-bean-flicker
-beaner
-beaners
-beaney
-beaneys
-beanflicker
-bearded clam
-bearded taco
-beardedclam
-beardedtaco
-beastality
-beastial
-beastiality
-beastility
-beatch
-beatoff
-beatyourmeat
-beaver
-beaver cleaver
-beaver lips
-beavershot
-beeatch
-beef curtains
-beener
-beestiality
-beeyotch
-behenchod
-beissar pola
-beissha
-beissha magir pola
-bekkol
-bellend
-bellesa
-beotch
-beshja
-beshja coda
 beshja magi
-beshjar beta
-bessha
 bessha magi
-besshya
-bestial
-bestiality
-bga
-bga amar
 bhoda
-bhuski maagi
-bi curious
-bi+ch
-bi7ch
-biatch
-bich
-bichi chara potla
-bici
-bicir bal
-bicite
-bicon
-bicurious
-big baller
-big black
 big boobs
 big breasts
 big cock
-big knockers
 big tits
 bigass
-bigballer
-bigbastard
 bigbreasts
 bigbutt
 bigtits
-bimbo
-bimbos
-bint
-birdlock
-bissa magir pula
-bitch
-bitch*
-bitchass
-bitched
-bitcher
-bitchers
-bitches
-bitchez
-bitchin
-bitching
-bitchslap
-bitchtit
-bitchy
-bite me
-biteme
-bitol
-bitties
 black cock
 blackcock
-blackman
-blackout
-blacks
-blewinski
-blonde action
-blonde on blonde
-blonde on blonde action
-blood fart
-bloodclaat
-bloodfart
-bloody
-blow j
 blow job
-blow me
-blow my pole
-blow your l
-blow your load
-blow-job
 blowjob
 blowjobs
-blowme
-blue ball
 blue balls
-blue waffle
-blueball
 blueballs
-bluegum
-bluegums
-bluewaffle
-blumpkin
-bo ob
-bo obs
-boang
-boche
-boches
-bodily
-boffing
-boga khaa
-bogan
-bohunk
-boink
-boiolas
-boital magir coital pola
-boka acoda
 boka choda
-boka coda
-bokachoda
-bokacoda
-bokacodai
-bokacodar
-bokacodara
-bokacondi
-bokacuda
-bokocoy
-bokolom
-bolde
-bollick
-bollock
-bollock*
-bollocks
-bollok
-bollox
-bolod
-boltu chire felbo
-bombers
-bombing
-bomd
 bondage
-bone smuggler
-bone-smuggler
-boned
 boner
 boners
-bonesmuggler
-bong
-bongosh bara thapai
 boob
 boobie
 boobies
 boobs
 booby
 boobz
-boody
-booger
-bookie
-boong
-boonga
-boongas
-boongs
-booni
-boonie
-boonies
-booobs
-boooobs
-booooobs
-booooooobs
-bootee
-bootlip
-bootlips
-booty
-booty buffer
 booty call
-booty-buffer
 bootycall
-boozer
-boozy
-bosch
-bosche
-bosches
-boschs
-bosomy
-boston george
-botla
-botoi khowra
-bounty bar
-bounty bars
-bountybar
-boure maire
-brea5t
 breastjob
 breastlover
 breastman
 breasts
-brothel
-brown piper
-brown shower
-brown showers
-brown-piper
-brownie king
-brownie queen
-brownpiper
-brunette action
-btch
-buceta
-buda
-buddha head
-buddha-head
-buddhahead
-buddhaheads
-buffies
-bufter
-bufty
-bugger
-buggered
-buggery
-bukake
-bukana
-bukcud
 bukkake
-bule
-bules
-bull dike
-bull shit
-bull-shit
-bullcrap
-bulldike
-bulldyke
-bullet vibe
 bullet vibrator
-bullshit
-bullshits
-bullshitted
-bullturds
-bum
-bum boy
-bum chum
-bum driller
-bum pilot
-bum pirate
-bum rider
-bum robber
-bum rustler
-bum-boy
-bum-chum
-bum-driller
-bum-pirate
-bum-robber
-bumblefuck
-bumboy
-bumchum
-bumdriller
-bumfuck
-bumhole engineer
-bumrider
-bumrobber
-bung
-bung hole
-bunga
-bungas
-bunghole
-bunny fucker
-burr head
-burr heads
-burrhead
-burrheads
-buskir
-busty
-butchbabes
-butchdike
-butchdyke
 butt
-butt bandit
-butt banger
-butt boy
-butt buddy
-butt crust
-butt nugger
-butt pilot
-butt pirate
 butt plug
-butt rider
-butt robber
-butt rustler
-butt-boy
-butt-pirate
-butt-robber
 buttbandit
 buttbang
 buttbanger
@@ -1164,8 +220,6 @@ buttface
 buttfuck
 buttfucker
 buttfuckers
-butthead
-butthole
 butthole engineer
 butthump
 buttman
@@ -1180,151 +234,15 @@ buttrider
 buttrobber
 buttstain
 buttwipe
-byatch
-c u n t
-c-0-c-k
-c-o-c-k
-c-u-n-t
-c.0.c.k
-c.o.c.k.
-c.u.n.t
-c0ck
-c0cks
-c0cksucker
-c0k
-cabron
-caca
-cacker
-cahone
-calcutta
-calice
-camcha
-camel jockey
-camel jockeys
-camel jockies
-camel toe
-cameljockey
-cameljockies
-cameltoe
 camgirl
-camra chuilla lobon lagamu
 camslut
 camwhore
-canadian porch swing
-carpet eater
-carpet muncher
-carpeteater
-carpetmuncher
-carruth
-cawk
-cawks
-cazzo
-cda
-ceadaybar
-cervix
-chama
-chamarfo
-chamarpo
-chamarpola
-chav
-cheese eating surrender monkey
-cheese eating surrender monkies
-cheese-eating surrender monkey
-cheeseeating surrender monkey
-cheeseeating surrender monkies
-cheesehead
-cheeseheads
-chen
-cherry popper
-cherrypopper
-chi chi man
-chi-chi man
-chicken queen
-chickslick
-chidanirpola
-china man
-china men
-china swede
-china swedes
-chinal
-chinal furi
-chinaman
-chinamen
-chinaswede
-chinaswedes
-chinc
-chincs
-ching chong
-ching chongs
-ching-chong
-chinga
-chingchong
-chingchongs
-chink
-chinks
-chinky
-chjasra
-choad
-chocolate rosebud
-chocolate rosebuds
 choda
-chodanibhadanir pola
-chodanibhodanir pola
 chode
-chodes
-chodna
-chodon boiraagi
-chodon idli
-choke my chicken
-choking the chicken
-cholerophile
-cholerophilia
-chonkies
-chonky
-chonkys
-chood
 chot dhon
-chraa
-christ
-christ killer
-christ killers
 chud marani r nati sala
-chudanir pola
 chudi
-chudir bhai
-chudir pola
-chudmu
-chudna
-chug
-chugs
-chuj
-chunger
-chungers
-chunkies
-chunkys
-chute
-chutkikhor
 cialis
-cipa
-circle-jerk
-circlejerk
-cishet
-cissie
-cissy
-cl1t
-clamdigger
-clamdiver
-clamps
-clansman
-clansmen
-clanswoman
-clanswomen
-claustrophile
-claustrophilia
-cleveland accordion
-cleveland hot waffle
-cleveland steamer
-climax
 clit
 clitface
 clitfuck
@@ -1332,29 +250,12 @@ clitoris
 clitorus
 clits
 clitty
-clogwog
-clover clamp
-clover clamps
-clunge
 cluster fuck
 cluster-fuck
 clusterfuck
-cnts
-cntz
-cnut
-cocain
-cocaine
 cock
-cock jockey
-cock knocker
-cock lord
 cock ring
-cock smoker
-cock sucker
 cock tease
-cock*
-cock-head
-cock-sucker
 cockass
 cockbite
 cockblock
@@ -1364,7 +265,6 @@ cockcowboy
 cockface
 cockfight
 cockfucker
-cockhead
 cockholster
 cockjockey
 cockknob
@@ -1396,124 +296,18 @@ cockstruction worker
 cocksucer
 cocksuck
 cocksucked
-cocksucker
 cocksucking
 cocksucks
 cocksuka
 cocksukka
 cocktease
 cocky
-cod
-coda
-codanir pola
-codao
-codar
-code
-code na dinta sara gude alta
-codhe na dinta sara gudhe alta
-codna
-codnar
-codne
-codon
-cohee
-coimetrophile
-coimetrophilia
-coital
-coitus
-cok
-cokmuncher
-coksucka
-collared
-collaring
-commie
 condom
-coochie
-coochy
-coolie
-coolies
-cooly
-coon
-coon ass
-coon asses
 coonass
 coonasses
-coondog
-coons
-cootch
-cooter
-cooze
-coprolagnia
-coprophile
-coprophilia
-copulate
-corksucker
-corn hole
-cornhole
-cotta
-cowgirl
-cowgirls
-cox
-cra5h
-crabs
-crack ho
-crack spackler
-crackbitch
-crackcocain
-cracker
-crackpipe
-crackspacker
-crackspackler
 crackwhore
-crafty butcher
-crakker
-crap
-crap face
-crap head
-crapface
-craphead
-crapola
-crapper
-crappy
-crash
-cream-pie
 creampie
-criss
-crisse
-crotch
-crotchjockey
-crotchmonkey
-crotchrot
-cuck
-cuda
-cuda dimu
-cuda-kha
-cudacudi
-cudani
-cudanir
-cudanir po
-cudanirpo
-cudao
-cudar
-cudas
-cudda
-cudde
-cude
-cudera
-cudhirvai
-cudi
-cudir
-cudir pola
-cudir vai
-cudirvai
-cudmarani
-cudmu
-cudna
 cudna magi
-cudnagiri
-cudnar
-cudon
-cuida
-cuidda
 cum
 cum belch
 cum belcher
@@ -1527,65 +321,17 @@ cum licker
 cum shot
 cum shots
 cum stain
-cum sucker
-cumbelch
-cumbelcher
-cumbeltch
-cumbeltcher
-cumbubble
-cumdumpster
-cumfest
-cumguzzle
-cumguzzler
-cuming
-cumjockey
-cumlapper
-cumlicker
-cumlickr
-cumm
-cumm bubble
-cumm dumpster
-cumm guzzler
-cumm stain
-cumm sucker
-cummbubble
-cummdumpster
-cummer
-cummguzzler
-cummin
 cumming
-cummstain
-cummsucker
-cumquat
-cumqueen
 cums
 cumshot
 cumshots
 cumslut
-cumstain
-cumsucker
-cumsuker
-cumtart
-cumwad
-cunilingus
-cunillingus
-cunn
-cunnie
 cunnilingus
-cunntt
-cunny
 cunt
-cunt boy
-cunt hair
-cunt whisker
-cunt*
-cunt-boy
-cuntboy
 cunteyed
 cuntface
 cuntfuck
 cuntfucker
-cunthair
 cunthole
 cunthunter
 cuntlick
@@ -1595,120 +341,28 @@ cuntrag
 cunts
 cuntslut
 cuntsucker
-cuntwhisker
 cuntwisker
 cuntz
-curry muncher
-curry munchers
-curry-muncher
-currymuncher
-currymunchers
-cushe
-cushi
-cushis
 cut marani khangki magi
-cutmarani
-cutmaranir
-cutmaranir fuya
-cutmaranir pola
-cuze
-cyalis
-cyberfuc
-cyberfuck
-cyberfucked
-cyberfucker
-cyberfuckers
-cyberfucking
 cybersex
-cyberslimer
-d i c k
-d0ng
-d0uch3
-d0uche
-d1ck
-d1ld0
-d1ldo
-d4mn
 dadar chod
-dago
-dagos
-dahmer
-daisy chain
-daisy gang
-dalal
-damm
-dammit
-damn
-damnation
-damned
-damnit
-dangelberry
-dangleberry
-darkey
-darkeys
-darkie
-darkies
-darky
 date rape
 daterape
-datnigga
-dawgie style
-dawgie-style
-daygo
-ddlg
-deapthroat
-deep throat
-deep throating
-deep-throat
-deepaction
 deepthroat
 deepthroating
-deez nuts
-defecate
-deggo
-dego
-degos
-demon
-dendrophile
-dendrophilia
-deshobondhu
 destroyyourpussy
-deth
-devil
-dhinca
 dhon
 dhon kaitta kutta diya khaoyamu
 dhon khecha
-dhoner bal
-dhukai
-dhukaiya
-dhukamu
-dhur bal
-dhur-kana
-dhuru madarocod
-diaper daddy
-diaper head
-diaper heads
-diaperdaddy
-diaperhead
-diaperheads
 dick
-dick breath
 dick fiend
 dick girl
-dick head
-dick nose
 dick pic
-dick wad
-dick weed
-dick*
 dick-girl
-dick-ish
 dickbag
 dickbeater
 dickbeaters
 dickbrain
-dickbreath
 dickdipper
 dickface
 dickfiend
@@ -1716,10 +370,8 @@ dickflipper
 dickforbrains
 dickfuck
 dickgirl
-dickhead
 dickheads
 dickhole
-dickish
 dickjuice
 dickless
 dicklick
@@ -1727,7 +379,6 @@ dicklicker
 dickman
 dickmilk
 dickmonger
-dicknose
 dickpic
 dickripper
 dicks
@@ -1735,165 +386,28 @@ dicksipper
 dickslap
 dickslicker
 dicksucker
-dickwad
 dickweasel
-dickweed
 dickwhipper
 dickwod
 dickzipper
-diddle
-dik breath
-dik fiend
-dik head
-dikbreath
-dike
-dike*
-dikfiend
-dikhead
-dild0
-dild0s
 dildo
 dildos
 dilf
-diligaf
-dilld0
-dilld0s
-dillweed
-dimwit
-dingelberry
-dingle
-dingleberries
-dingleberry
-dink
-dinks
-dipsea
-dipship
-dipshit
-dipstick
-dirsa
-dirty pillows
-dirty sanchez
-dishabiliophile
-dishabiliophilia
-dix
-dixiedike
-dixiedyke
-dlck
-dofla hetta
-dog shit
-dog style
-dog-fucker
-dog-shit
-doggie
 doggie style
-doggie-style
-doggiestyle
-doggin
-dogging
 doggy style
-doggy-style
-doggystyle
-dogshit
-dolcett
 domination
-dominatricks
-dominatrics
 dominatrix
-domme
-dommes
-dong
-donkey punch
-donkeypunch
-donkeyribber
-donut muncher
-donut puncher
-doochbag
-doodoo
-doofus
-dookie
-doon coon
-dooncoon
-doosh
-dopey
-dot head
-dot heads
-dothead
-dotheads
-double dong
-double penetration
-doubledong
-doublepenetration
-douch3
-douche
-douche bag
-douche-fag
-douchebag
-douchebags
-douchewaffle
-douchey
-dp action
-dpaction
-dragqueen
-dragqween
-drain the lizard
 dripdick
-drug
-drugs
-drunk
-dry hump
-dryhump
-duche
-dud
-duder
-dudette
-dudh
-dukaiya dilam
-dukamu
 dumass
-dumb
-dumb ass
 dumbass
 dumbasses
-dumbbitch
-dumbfuck
-dumbshit
-dummy
-dumshit
-dune coon
-dune coons
-dune-coon
-dunecoon
-dupa
-duru alarfut ala
-dutch rudder
-dvda
-dyefly
-dyke
-dykes
-dystychiphile
-dystychiphilia
-dziwka
-earning red wings
-earotics
 easyslut
-eat me
-eat my
 eat my ass
-eat my shorts
 eatadick
 eatballs
-eathairpie
-eatme
 eatmyass
 eatpussy
 ecchi
-ecstacy
-edge play
-edgeplay
-eggplant
-ei kanke
-ei kanke mage
-ejackulate
 ejaculate
 ejaculated
 ejaculates
@@ -1901,371 +415,35 @@ ejaculating
 ejaculatings
 ejaculation
 ejaculations
-ejakulate
-ekodom vodar vitre handaia raikha dimu
-ekrem
-ekrem*
-ekto
-electro-play
-electroplay
-emetophile
-emetophilia
-emonchoda
-enby
-enculer
-enema
-enlargement
 erect
 erection
-ero
 erotic
-erotism
 escort
-eskimo trebuchet
-esqua
-essohbee
 ethical slut
-eunuch
-evl
-excrement
-exkwew
-explosion
-extacy
-extasy
-eye-tie
-eyetie
-f u c k
-f u c k e
-f u c k e r
-f u k
-f*ck
-f-u-c-k
-f.u.c.k
-f4nny
-f_u_c_k
-facefucker
 facial
-fack
-faeces
-faen
-fag
-fag bomb
-fag*
-fag-bomb
-fag1t
-fagbag
-fagbomb
-faget
-fagfucker
-fagg
-fagg0t
-fagg1t
-fagged
-fagging
-faggit
-faggitt
-faggot
 faggotcock
-faggs
-faghump
-fagit
-fagmunch
-fagot
-fagots
-fags
-fagt
-fagtard
-fagz
-faig
-faigs
-faigt
-fak
-falaiya
-falamu
-fanculo
-fanny
-fannybandit
-fannyflaps
-fannyfucker
-fanyy
-fart
-farted
-farting
-fartknocker
-farty
-fastfuck
-fat
-fatah
 fatass
-fatfuck
-fatfucker
-fatso
-fck
-fckcum
-fckd
-fcuk
-fcuker
-fcuking
-fecal
-feces
-feck
-fecker
-feg
-felatio
-felch
-felcher
-felching
-fellate
-fellating
 fellatio
-feltch
-feltcher
-feltching
-female squirting
-femalesquirtin
-femalesquirting
-femdom
 fetish
-ficken
-figging
-finger bang
-finger banged
-finger banger
-finger fuck
-fingerbang
-fingerbanged
-fingerbanger
-fingerbanging
-fingered
-fingerfood
-fingerfuck
-fingerfucked
-fingerfucker
-fingerfuckers
-fingerfucking
-fingerfucks
-fingering
-finocchio
-finoccio
-finochio
-fisted
-fister
-fistfuck
-fistfucked
-fistfucker
-fistfuckers
-fistfucking
-fistfuckings
-fistfucks
 fisting
-fisty
-fitt
-fitt*
-fkinnicodara
-fkinnir-put
-fkirer bacca
-flamer
-flange
-flasher
-flikker
-flip
-flipping
-flipping the bird
-flogging the bishop
-flogthelog
-floo
-floozy
-flydie
-flydye
-foad
-fok
-fondle
-foobar
-fook
-fooker
-fool
 foot fetish
 foot job
-foot-job
-footaction
 footfetish
-footfuck
-footfucker
 footjob
-footlicker
-footstar
-fore skin
 foreskin
-forni
-fornicate
-fotka
-fotze
-foursome
-fourtwenty
-freakfuck
-freakyfucker
-freefuck
-freex
-french rudder
-frigg
-frigga
-frigger
-frog eater
-frog-eater
-frogeater
-frolic me
-frolicme
-frottage
-frotting
-fu(*
-fubar
-fucck
-fuchah
-fuck
 fuck buttons
-fuck face
-fuck-tard
-fuck-wit
-fucka
 fuckable
 fuckass
-fuckbag
-fuckbitch
-fuckbook
 fuckboy
-fuckbrain
 fuckbuddy
 fuckbutt
-fuckd
-fucked
-fuckedup
-fucken
-fucker
-fuckers
-fuckersucker
-fuckface
-fuckfest
-fuckfreak
-fuckfriend
-fuckhead
-fuckheads
-fuckher
-fuckhole
-fuckin
-fuckina
-fucking
-fuckingbitch
-fuckings
-fuckingshitmotherfucker
-fuckinnuts
-fuckinright
-fuckit
-fuckknob
-fuckme
-fuckmeat
-fuckmehard
-fuckmonkey
-fuckn
-fucknugget
-fucknut
-fucknuts
-fucknutt
-fucknutz
-fuckoff
-fuckpig
-fuckpuppet
-fuckr
-fucks
-fuckshit
-fuckstick
-fucktard
-fucktards
-fucktoy
-fucktrophy
-fuckup
-fuckwad
-fuckwads
-fuckwhit
 fuckwhore
-fuckwit
-fuckwits
-fuckwitt
-fuckyomama
-fuckyou
-fudge packer
-fudge-packer
-fudgepacker
-fugly
-fuk
-fuk you
-fuk*
-fukah
-fuken
-fuker
-fukin
-fuking
-fukk
-fukka
-fukkah
-fukken
-fukker
-fukkhead
-fukkin
-fukking
-fuks
-fuktard
-fuktards
-fukwhit
-fukwit
-funeral
-funfuck
-funga
-fungi
-fungus
-fur burger
-furbuger
-furry burger
-fury burger
-futanari
-futanary
-futki
-futkretzn
-fuuck
-fux
-fux0r
-fuxor
-fvck
-fvck you
-fvcker
-fvckface
-fvcking
-fvcknut
-fvcknuts
-fvk
-fxck
-g-spot
-g00k
 gaand maarano
-gadha
-gae
-gai
-gaja
-gajakhur
-gand mara
-gandu
-gang bang
 gangbang
 gangbanged
 gangbanger
 gangbangs
-gangsta
-ganja
-ganjakhor
-gar mara kha
 gassyass
-gator bait
-gatorbait
-gauraa
 gay
 gay sex
 gayass
@@ -2282,460 +460,42 @@ gaysian
 gaytard
 gaywad
 gayz
-geezer
-geni
-genital
-genitals
-genitorture
-genocide
-gerontophile
-gerontophilia
 getiton
-gey
-gfy
-ghay
-ghey
 ghupshi magi
 giant cock
-gigolo
-gin jockey
-gin jocky
-ginzo
-ginzos
-gipp
-gippo
-gippos
-gipps
-girl on
-girl on top
-girls gone wild
-givehead
 glans
-glazeddonut
-gniga
-go ar juta
-go-kun
-goaj bigar beshi
-goatcx
-goatse
-gob
-god
-god dammit
-god damn
-god damned
-god damnit
-god-dam
-god-damn
-god-damned
-goda
-godam
-godammit
-godamn
-godamnit
-goddam
-goddamit
-goddamm
-goddammit
-goddamn
-goddamned
-goddamnes
-goddamnit
-goddamnmuthafucker
-godsdamn
-gokkun
 golden shower
 golden showers
 goldenshower
-golliwog
-golliwogs
-gollywog
-gonad
-gonads
-gonorrehea
-gonzagas
-goo girl
-gooch
-goodpoop
-gook
-gook eye
-gook eyes
-gook-eye
-gookeye
-gookeyes
-gookie
-gookies
-gooks
-gooky
-gora
-goras
-goregasm
-gorom dim dimu
-goruchoda
-gorurbal
-gorurchod
-goster lathi satamu
-gotohell
-goy
-goya
-goyar
-goyim
-gray queen
-greaseball
 greaseballs
-grey queen
-gringo
-gringos
-groe
-groid
-groids
-grope
-gross
-grostulation
 group sex
-grucor
-gspot
 gstring
-gtfo
-gu er gaidor
-gu kha
-gu-kha
-gua cata
-gua marani
-guar vitre bish fora
-gub
-gubba
-gubbas
-gubs
 gud
 gud marani
-guder bal
-gudir bjata
-guido
-guiena
-guineas
-guizi
-gummer
 guro
-gushkhor
-guya
-guya-mara
-guyar vitre
-gwailo
-gwailos
-gweilo
-gweilos
-gym bunny
-gymbunny
-gyopo
-gyopos
-gyp
-gyped
-gypo
-gypos
-gypp
-gypped
-gyppie
-gyppies
-gyppo
-gyppos
-gyppy
-gyppys
-gypsys
-h e l l
-h o m
-h00r
-h0ar
-h0m0
-h0mo
-h0r
-h0re
-h4x0r
-haaramjada
-hadji
-hadjis
-haga
-hagai
-hagu
-hairy hatchet wound
-hairy taco
-hairyback
-hairybacks
-hairyhatchetwound
-hairytaco
-haji
-hajis
-hajji
-hajjis
-hala
-hala ljaora coda
-halaay vond
-halar
-halarput
-halay
-half breed
-half caste
-halfbreed
-halfcaste
-hamas
-hamflap
 hand job
-hand-job
-handai
 handjob
-haole
-haoles
-hapa
-haram jada
-haram jadi
-harami
-haramir bacca
-haramjada
-haramjadi
-haramkhor
 hard core
 hardcore
 hardcoresex
 hardon
-harem
-hauar pola
-hauwa
-hauya
-hauyar
-hauyar nati
-hauyar po
-he11
-headfuck
-hebe
-hebes
-heda
-hedam
-hedar
-hedar fuya
-heeb
-heebs
-heimie
-hell
-hells
-helvete
-hemp
-henhouse
 hentai
-hermaphrodite
-hermie
-heroin
-herp
-herpes
-herpy
-heshe
-heta
-hetamaranir fua
-hetta
-hickory switch
-hijacker
-hijacking
-hijla
-hijra
-hijrachoda
-hillbillies
-hillbilly
-hindoo
-hippophile
-hippophilia
-hiroinci
 hiscock
-hitler
-hitlerism
-hitlerist
-hiv
-hoar
-hoare
-hobag
-hodgie
-hoe
-hoer
-hoer*
-hoes
-hoga
-hoga cata
-hogamara
-hogar
-hogar nati
-hogar vitre
 hogay
-hol
-hol taina
-holcata
-holer culkani
-holestuffer
-hom0
-homey
-homicide
-hommo
 homo
 homobangers
 homodumbshit
 homoerotic
 homoey
-honger
-honkers
-honkey
-honkeys
-honkie
-honkies
-honky
-hooch
-hoochie mama
-hookah
-hooker
-hookers
-hoor
-hoore
-hootch
-hooter
-hooters
-hore
-hori
-horis
-hork
-horndawg
-horndog
-horney
-horniest
 horny
-horse shit
-horse-shit
-horseshit
-hosejob
-hoser
-hot beef injection
-hot carl
-hot chick
-hot richard
-hotcarl
-hotdamn
 hotpussy
 hotsex
-hottotrot
-how to kill
-how to murder
-howtokill
-howtomurdep
-huevon
-huga
-hugamara
 huge cock
-huge fat
-hugefat
-hui
-hummer
-hump
-humped
-humper
-humpher
-humphim
-humpin
-humping
-humundir put
-humundir-put
-husky
-hussy
-hustler
 hymen
-hymie
-hymies
-iblish
-iblowu
-ike
-ikes
-ikey
-ikeymo
-ikeymos
-ikwe
-illegal
-illegals
-impact play
-impact-play
-inbred
 incest
-indon
-indons
-injun
-injuns
-insest
 intercourse
-interracial
 intheass
-inthebuff
-israels
-itjadi
-itor
-j3rk0ff
-jack off
-jack-off
 jackass
-jackhole
-jacking off
-jackoff
-jackshit
-jacktheripper
-jail bait
-jailbait
-jamat
-janoar
-jap
-japcrap
-japie
-japies
-japs
-jarjer mayere cudi
-jarod
-jaroj
-jaroj pola
-jaura
-jebus
-jelly donut
-jerk
-jerk mate
-jerk off
-jerk-off
-jerk0ff
-jerked
-jerking off
-jerkmate
-jerkoff
-jerries
-jerry
-jesus
-jesus christ
-jesuschrist
-jewboy
-jewed
-jewess
-jig
-jiga
-jigaboo
-jigaboos
-jigarooni
-jigaroonis
-jigg
-jigga
-jiggabo
-jiggaboo
-jiggabos
-jiggas
-jigger
-jiggerboo
-jiggers
-jiggs
-jiggy
-jigs
-jihad
-jijjiboo
-jijjiboos
-jimfish
-jisim
-jism
-jiss
 jiz
 jiz muffin
 jiz sandwich
@@ -2758,545 +518,57 @@ jizzm
 jizzmuffin
 jizzn
 jizzum
-jonggi
-jugg
-juggs
-jugs
-jungle bunnies
-jungle bunny
-junglebunny
-junkie
-junky
-juta pida
-jutamu
-kac kola
-kacap
-kacapas
-kacaps
-kaffer
-kaffir
-kaffre
-kafir
-kahnkir pola
-kailla
-kala
-kamlacuda
-kanake
-kande falaiya tor mayere cudi
-kanke mage
-kanke mage higab koe
-kanker
-kanker*
-kaththir betja
-katsap
-katsaps
-kawk
-kennebunkport surprise
-kentucky klondike
-kentucky tractor puller
-khaista
-khalarchod
-khangki
-khangkir
-khangkir bu
-khangkir pola
-khangkirpola
-khankhi chele
 khanki
 khanki chudi
 khanki maggi
 khanki magi
 khanki magir pola
 khanki-magi r pula maderchud
-khankimagi
-khankir
-khankir chele
-khankir chhele
-khankir fuya
-khankir pola
-khankir pula
-khankir pula koy ki
-khankirchele
-khankirpola
-khaoya mal
-kharaiya gesil
-khbish
-khbish coda
-khokhol
-khokhols
-kicking
-kigger
-kike
-kikes
-kill
-kills
-kimchis
-kinbaku
 kink
 kinkster
 kinky
 kinkyjesus
-kire cudanir fuya
 kissass
-kitty puncher
-kitty-puncher
-kittypuncher
-kiunt
-kkk
-klan
-klansman
-klansmen
-klanswoman
-klanswomen
-klootzak
-knob
-knobbing
-knobead
-knobed
-knobend
-knobhead
-knobjocky
-knobjokey
-knobs
-knobz
-knockers
-knulle
-kock
-kondmer
-kondom
-kondum
-kondums
-konodom
-kooch
-kooches
-koochie
-koochy
-koon
-kootch
-kootchie
-kootchy
-koromchod
-kota kosna ken kanke mage
-krap
-krappy
-kraut
-krauts
-kuffar
-kuk
-kuksuger
-kum
-kumbubble
-kumbullbe
-kumer
-kumm
-kummer
-kumming
-kumquat
-kums
-kunilingus
-kunnilingus
-kunt
-kunts
-kuntz
-kurac
-kurwa
-kushi
-kushis
-kusi
-kusi*
-kuth-tar bachcha
-kuthar bacha
-kuththar baiccha
-kutta
-kutta bacca
 kutta choda
-kutta mora
-kuttacoda
-kuttamara
-kuttar
-kuttar bacca
-kuttar baccha
-kuttar bhaccha
-kuttar gu
-kuttar hol
-kuttargu
-kutti
-kwa
-kwai lo
-kwai los
-kwif
-kyke
-kykes
-kynophile
-kynophilia
-kyopo
-kyopos
-kyrpa
-kyrpa*
-l3i+ch
-l3i\+ch
-l3i\\+ch
-l3itch
 labia
-laden
-lady boy
-lady-boy
-ladyboy
-lagai
-lagaiya
 lagay
 lagaya
-laora
-lapdance
-laththi dimu
-lds
-leather restraint
-leather straight
-leather straight jacket
-leatherrestraint
-lebo
-lebos
-lech
-ledani
-lemon party
-lemonparty
-len
-lenggta babar jaroj sontan
-lenggta cutmarani
-lengta
-leningrad steamer
-leoda cuda
-leora
-leper
-lerr
-lerr kawrar fua
-lesbain
-lesbayn
 lesbian
 lesbians
-lesbin
-lesbiyan
-lesbo
-lesbos
-leso
-lettuce picker
-lettucepicker
-leura
-lez
-lezbe
-lezbefriends
-lezbian
-lezbians
-lezbo
-lezbos
-lezz
-lezzian
-lezzie
-lezzies
-lezzo
-lezzy
 libido
-lick my nuts
 lickcock
-licker
-licking
-lickme
 licknipple
-light in the fedora
-light in the loafers
-light in the pants
-lilniglet
-limey
-limp wristed
-limp-wristed
 limpdick
-limy
 lingerie
-lipshits
-lipshitz
 literotica
 livesex
-ljadani
-ljangta
-ljaora
-ljaurar put
-lmao
-lmfao
-loadedgun
-loin
-loins
-lolita
-lotir bacca
 love canal
-lovebone
-lovegoo
-lovegun
-lovejuice
-lovemaking
-lovemuscle
-lovepistol
-loverocket
-lowlife
-lsd
-ltir beta
-ltir po
-lube
-lubejob
-lubra
-lucifer
-luckycammeltoe
-lugan
-lugans
-luicca
 lust
 lusting
 lusty
-lynch
-m-fucking
-m0f0
-m0fo
-m45terbate
-ma5terb8
-ma5terbate
-maagi
-maal
-mabuno
-mabunos
-macaca
-macacas
-madar cod
-madarchod
-madarcod
-madarcud
-madarcude
-madari
-madarira
-madarirput
-madartosht
-madartost
-maderchood
-mafugly
-mage
-maggir putt
 magi
-magibaj
-magicwand
-magikhor
-magir
-magir chaoal
-magir fuya
-magir puth
-magirdalal
-mahbuno
-mahbunos
-maigja
-maindar
-maindarer
-maire bap
-make me come
-makemecome
-makemecum
-mal
-male squirting
-male-squirting
-maltar
-malun
-mamhoon
-mams
 man whore
-mandar
-mang
-mang pola
-mang-er pola
-mangger nati
-mangger pola
-manggi
-manggir
-manggir put
-manggu
-mangina
-manhater
-manpaste
 manwhore
-mara
-marani
-maranir
-mare
-mare cudi
-mari
-maricon
-maricón
-marijuana
-masiker
-masiker rokt
 masochist
-masokist
 massa
 massive cock
 massterbait
 masstrbait
 masstrbate
-mastabate
-mastabater
-master-bate
-masterb8
-masterbaiter
-masterbat
-masterbat*
-masterbat3
-masterbate
-masterbates
-masterbating
-masterbation
-masterbations
-masterblaster
-mastrabator
-masturb8
 masturbat
 masturbat*
 masturbate
 masturbating
 masturbation
-mathamota
-mattressprincess
-mau mau
-mau maus
-maumau
-maumaus
-maura coda
-maxi
-mayonnaise monkey
-mayonnaise monkies
-mayre
-mcfagget
-mdlb
 meat masseuse
-meat spin
-meatbeatter
-meatrack
-meatspin
-menage
-menage a trois
-menage-a-trois
-menages a trois
-menages-a-trois
-menophile
-menophilia
-menses
-menstruate
-menstruation
-merd
-merd*
-meth
-mexican pancake
-mgger
-mggor
-mibun
-mick
-mickeyfinn
-mideast
-mierda
 milf
-milwaukee blizzard
-mindfuck
-minge
-minger
-mirjafor
-missionary
 missionary position
-mississippi birdbath
-mjangger-pola
-mo-fo
-mockey
-mockie
-mocky
-modkhor
-mof0
-mofo
-moga choder bacha
-mojnyor fuya
-moky
 molest
 molestation
 molester
 molestor
-moneyshot
-mong
 monkeydick
-monkeyhumper
-monkleigh
-mooli
-moolie
-moon cricket
-moon crickets
-mooncricket
-mooncrickets
-mormon
-moron
-moskal
-moskals
-moslem
-mosshead
-motha
-motha fucker
-motha fuker
-motha fukkah
-motha fukker
-mothafuck
-mothafucka
-mothafuckas
-mothafuckaz
-mothafucked
-mothafucker
-mothafuckers
-mothafuckin
-mothafucking
-mothafuckings
-mothafucks
-mothafuker
-mothafukkah
-mothafukker
 mother chod
-mother fucker
-mother fukah
-mother fuker
-mother fukkah
-mother fukker
-mother-fucker
-motherfuck
-motherfucka
-motherfucked
-motherfucker
-motherfuckers
-motherfuckin
-motherfucking
-motherfuckings
-motherfuckka
-motherfucks
-motherfukah
-motherfuker
-motherfukkah
-motherfukker
-motherfvcker
-motherlovebone
-mothrfucker
-mouliewop
-mound of venus
-moundofvenus
-mr hands
-mr. hands
-mrhands
-mtherfucker
-mthrfuck
-mthrfucker
-mthrfucking
-mtrfck
-mtrfuck
-mtrfucker
-mud people
-mud person
-mudpeople
-mudperson
 muff
 muff diver
 muff diving
@@ -3307,537 +579,58 @@ muffdiving
 muffindiver
 mufflikcer
 muffpuff
-muie
-mulatto
-muli
-mulkku
-muncher
-munging
-munt
-munter
-murder
-murderer
-muschi
-muscle mary
-mutha
-mutha fucker
-mutha fukah
-mutha fuker
-mutha fukkah
-mutha fukker
-muthafecker
-muthafuckaz
-muthafucker
-muthafuckker
-muthafukah
-muthafuker
-muthafukkah
-muthafukker
-muther
-mutherfucker
-mutherfucking
-muthrfucking
-mvtube
-mzungu
-mzungus
-n1gga
-n1gger
-n1gr
-naang
-nad
-nads
 naked
-nambla
-nanarchod
-nanichod
-nanirheda
-napalm
-nappy
-nastt
-nasty
-nastybitch
-nastyho
 nastyslut
 nastywhore
-natkir
-natkir po
-nawashi
-nazi
-nazis
-nazism
-ndir pulara
-necro
 necrophile
 necrophilia
 needthedick
-negres
-negress
-negro
-negroes
-negroid
-negros
-nengta
-neo nazi
-neo-nazi
-neonazi
-nepesaurio
-neshakhor
-nibirj
-nig
-nig nog
-niga
-nigar
-nigars
-nigas
-niger
-nigerian
-nigerian hurricane
-nigerians
-nigers
-nigette
-nigettes
-nigg
-nigg3r
-nigg4h
-nigga
-niggah
-niggahs
-niggar
-niggaracci
-niggard
-niggarded
-niggarding
-niggardliness
-niggardlinesss
-niggardly
-niggards
-niggars
-niggas
-niggaz
-nigger
-nigger*
-nigger;
-niggerhead
-niggerhole
-niggers
-niggle
-niggled
-niggles
-niggling
-nigglings
-niggor
-niggress
-niggresses
-niggs
-nigguh
-nigguhs
-niggur
-niggurs
-niglet
-nignog
-nigor
-nigors
-nigr
-nigra
-nigras
-nigre
-nigres
-nigress
-nigro
-nigs
-nigur
-nigur;
-niiger
-niiger;
-niigr
-niigr;
-nimpho
-nimphomania
-nimphomaniac
-nimrod
-ninny
-nip
 nipple
 nipple clamp
 nipple clamps
 nipplering
 nipples
-nips
-nirlojj
 nittit
-nlgger
-nlggor
-nob
-nob jokey
-nobhead
-nobjocky
-nobjokey
-nofuckingway
-nog
 nola choda
-nookey
-nookie
-nooky
-noonan
-nooner
-nosta
-noti
 noti magi
-notimagi
-notkirpu
-notty r pula
-noty
-noune
 nsfw
 nsfw images
-nti
 nti magi
-nti magir jhi
-nti magir pola
-ntir
 nude
 nudes
-nudger
-nudie
-nudies
 nudity
-numbnuts
-nunu
-nunu cosha polapain
-nunur bal
-nut sack
 nutbutter
-nutfucker
 nutsack
-nutted
-nutten
-nutter
-nutting
-nymph
 nympho
 nymphomania
 nymphomaniac
-o c k
 octopussy
-oi shali
 oklahomo
-omainsher jat
 omanusher bacca
-omg
-omorashi
-one cup two girls
-one guy
-one guy one jar
-one jar
-one jar one man
-one man one jar
-one way pipe cleaner
-only fans
 onlyfans
-ontherag
-opiate
-opium
-orafis
-oral
-orally
-orga
-organ
-orgasim
-orgasim;
-orgasims
 orgasm
 orgasmic
 orgasms
-orgasum
 orgies
 orgy
-oriface
-orifice
-orifiss
-orospu
-osama
-oshlil
-osti
-ottar mare bap
-ovary
-ovum
-ovums
-p e n i s
-p i s
-p u s s y
-p.u.s.s.y.
-p0rn
-pacha
-pacha-mara
-pachar
-pachay
-packi
-packie
-packy
-pad
-paddy
-paedo bear
-paedobear
-paedophile
-paedophilia
-pagol sagol
-paikhana
 pain slut
 painslut
-paki
-pakie
-pakis
-paky
-palesimian
-panamanian petting zoo
-pancake face
-pancake faces
-panocha
-panooch
-pansies
-pansy
-panti
-pantie
 panties
 panty
-parthenophile
-parthenophilia
-pasa
-paska
-paska*
-pastie
-pasty
-pawn
-payo
-pcp
-pearlnecklace
-peck
-pecker
-pecker head
-pecker nose
-peckerhead
-peckernose
-peckerwood
-pedamu
-pedo
-pedo bear
-pedobear
 pedophile
 pedophilia
 pedophiliac
-pee
-peeenus
-peeenusss
-peehole
-peenus
-peepee
-peepshow
-peepshpw
 pegging
-peinus
-pen1s
-penas
-pendejo
-pendy
-penetrate
-penetration
-pengtir pola
-peni5
-penial
 penile
 penis
-penis breath
-penis-breath
-penisbreath
 penises
-penisfucker
-penisland
 penislick
 penislicker
 penispuffer
-penthouse
-penti coda
-penus
-penuus
-perse
-perv
 perversion
-peter puffer
-peter-puffer
-peterpuffer
-petrol sniffer
-petrol-sniffer
-petrolsniffer
-peyote
-phagophile
-phagophilia
-phalli
-phallic
-phelch
-phelcher
-pheltch
-pheltcher
-phlip
 phone sex
 phonesex
-phuc
-phuck
-phuk
-phuked
-phuker
-phuking
-phukked
-phukker
-phukking
-phuks
-phungky
-phuq
-pi55
-picaninny
-piccaninny
-picka
-pickaninnies
-pickaninny
-piece of shit
-pieceofshit
-pieces of shit
-piefke
-piefkes
-pierdol
-pierdol*
-pigfucker
-piker
-pikey
-pikeys
-piky
-pillow biter
-pillowbiter
-pillu
-pillu*
-pimmel
-pimp
-pimped
-pimper
-pimpis
-pimpjuic
-pimpjuice
-pimpsimp
 pindick
-pinis wrinkle
-piniswrinkle
-pinko
-pipe hitter
-pipehitter
-pis
-pises
-pisin
-pising
-pisof
-piss
-piss off
-piss pig
-piss*
-piss-off
-pissdrinker
-pissed
-pissed off
-pisser
-pissers
-pisses
-pissflap
-pissflaps
-pisshead
-pissin
-pissing
-pisslicker
-pissoff
-pisspig
-pistol
-pito
-pizda
-pkistani
-pla
-playboy
-playgirl
-pleasure chest
-pleasurechest
-pms
-pnigerophile
-pnigerophilia
-pnigophile
-pnigophilia
-po.
-pocha
-pochas
-pocho
-pochos
-pocketpool
-pod
-pod marani
-podmarani
-pohm
-pohms
-poinephile
-poinephilia
-pola.
-polac
-polack
-polacks
-polak
-polar
-polare
-polay
-pole sitter
-pole smoker
-polesitter
-polesmoker
-polish the bishop
-polishing the torpedo
-pollock
-pollocks
-polock
-pommie
-pommie grant
-pommie grants
-pommies
-pommy
-pon fatamu
-pon mar
-pon marani
-pon mari
-pond
-pondailam
-pony boy
-pony girl
-pony-boy
-pony-girl
-pony-play
-ponyboy
-ponygirl
-ponyplay
-poo
-poof
-poon
-poon tang
-poonani
-poonany
-poontang
-poontsee
-poop
-poop chute
-poop stain
-poopchute
-pooper
-pooperscooper
-pooping
-poopstain
-poorwhitetrash
-popimp
-popped cherry
-poppedcherry
-porch monkey
-porch monkies
-porchmonkey
 porn
 porn hub
 pornflick
@@ -3848,66 +641,13 @@ pornographic
 pornography
 pornos
 pornprincess
-pot
-potato queen
-potty
-pound town
-poundtown
-pplicker
-pr0n
-pr1c
-pr1ck
-pr1k
-prairie nigger
-prairie niggers
-premature
-preteen
-pric
 prick
 prickhead
 pricks
-prig
-prince albert piercing
-proctophile
-proctophilia
-pron
-propaganda
 prostitute
-prude
-psilocybin
-pthc
 ptita
-pu55i
-pu55y
-pube
-pubes
-pubic
-pubiclice
-pubis
-pud
-pudboy
-pudd
-puddboy
-puke
-pukti
-pukti mara kha
 puktite vor
-pula
-pule
-punani
-punanny
-punany
 punkass
-punky
-punta
-puntang
-purinapricness
-pusies
-puss
-pusse
-pussee
-pussi
-pussie
 pussies
 pussy
 pussy juice
@@ -3917,11 +657,7 @@ pussy juicing
 pussy pounder
 pussy pounding
 pussy puncher
-pussy whipped
-pussy whipper
-pussy wiped
 pussy-puncher
-pussycat
 pussydestroyer
 pussyeater
 pussyfart
@@ -3940,217 +676,31 @@ pussys
 pussywhipped
 pussywhipper
 pussywiped
-pusy
-put
-puta
-pute
-putere
-putki
-putki cata kutta
-putki coda
-putki mara kha
-putki mari
-putki-mara
-putkii
-putkimara
-putkir
-putkite
-putkite anggul dhukie boa thak
-putkite bash dimu
-puto
-putu
-puuke
-puuker
-pv55ie
-pv55y
-qahbeh
-quashie
-queaf
-queef
-queef*
 queer
 queerbait
 queerhole
 queero
 queers
 queerz
-quickie
-quicky
-quiff
-quim
-qweers
-qweerz
-qweir
-r-tard
-r-tards
-r5e
-ra8s
-racial
-racy
-radicals
-rag head
-rag heads
-raghead
-ragheads
-raging
 raging boner
 ragingboner
-rajakar
-ramen yarmulke
-randy
 rape
 raped
 raper
 raping
 rapist
-raunch
-rautenberg
-rearend
-rearentry
-recktum
-rectal
-rectum
-rectus
-redleg
-redlegs
-redlight
-redneck
-rednecks
-redskin
-redskins
-reefer
-reestie
-reetard
-refugee
-reich
-rendi magir fuwa magir fuwa
-rendy
-renob
-rentafuck
-rere
-retard
-retarded
-retards
-retardz
-reverse cowgirl
-reversecowgirl
-revue
-rhabdophile
-rhabdophilia
-rhypophile
-rhypophilia
-rice queen
-rigger
 rim job
-rimjaw
 rimjob
 rimming
-ring raider
-ringraider
-ritard
-rosebuds
-rosy palm
-rosy palm and her 5 sisters
-rosypalm
-rosypalmandher5sisters
-rosypalmandherefivesisters
-round eyes
-roundeye
-rsalo cut
-rtard
-rtards
-rug munch
-rug munched
-rug muncher
-rugmuncher
-rum
-rump
-rump ranger
-rumprammer
-rumpranger
-rumpshaker
-ruski
-russki
-russkie
-rusty trombone
-rustytrombone
-s h i t
-s hit
-s&m
-s-h-1-t
-s-h-i-t
-s-o-b
-s.h.i.t.
-s.o.b.
-s0b
-s_h_i_t
-sac
-sachamo
-sack
-sadis
 sadism
 sadist
-sadom
-sala
-salarput
-sambo
-sambos
-samckdaddy
-sanchez
-sand niggah
-sand nigger
-sand niggers
-sand-nigger
-sandbar
-sandm
-sandniggah
-sandnigger
-santorum
-saoyacoda
-satanic
-sausagequeen
-sauya
-scag
-scallywag
-scank
-scantily
 scat
 scatophile
 scatophilia
-schaffer
-scheiss
-scheiss*
-schizo
-schlampe
 schlong
-schmuck
-schvartse
-schvartsen
-schwartze
-schwartzen
-scissoring
-screw
-screwed
-screwing
-screwyou
-scroat
-scrog
-scrot
-scrote
 scrotum
-scrubbing the carrot
-scrud
-scum
-seaman
-seamen
 seduce
-seks
 semen
-seplophile
-seplophilia
-seppo
-seppos
-septics
 sex
 sexcam
 sexed
@@ -4179,226 +729,14 @@ sexxy
 sexy
 sexymoma
 sexyslim
-sh!+
-sh!t
-sh!t*
-sh1t
-sh1ter
-sh1ts
-sh1tter
-sh1tz
-shag
-shagger
-shaggin
-shagging
-shakhamrig
-shala
-shalar
-shalar po shala
-shaligo
-shamar vitor
-shamedame
-shaoya
-shaoyar
-sharmuta
-sharmute
-shat
-shaua
-shauwa
-shauya
-shauyar
-shav
-shaved
-shaved beaver
 shaved pussy
-shavedbeaver
 shavedpussy
-shawa
-shawtypimp
-she male
-she-male
-sheeney
-sheep shagger
-sheepshagger
 shemale
-shetar bal
-shewar bal
-shewar beta
-shhit
-shi+
-shibari
-shibary
-shinola
-shipal
-shit
-shit ass
-shit eater
-shit face
-shit faced
-shit head
-shit kicker
-shit pusher
-shit shover
-shit-ass
-shit-bag
-shit-bagger
-shit-brain
-shit-breath
-shit-cunt
-shit-dick
-shit-eating
-shit-face
-shit-faced
-shit-fit
-shit-head
-shit-heel
-shit-hole
-shit-house
-shit-load
-shit-pot
-shit-spitter
-shit-stain
 shitass
-shitbag
-shitbagger
-shitblimp
-shitbrain
-shitbreath
-shitcan
 shitcunt
 shitdick
-shite
-shiteater
-shiteating
-shited
-shitey
-shitface
-shitfaced
-shitfit
-shitforbrains
-shitfuck
-shitfucker
-shitfull
-shithapens
-shithappens
-shithead
-shitheel
-shithole
-shithouse
-shiting
-shitings
-shitkicker
-shitlist
-shitload
-shitola
-shitoutofluck
-shitpot
-shitpusher
-shits
-shitshover
-shitspitter
-shitstain
-shitt
-shitted
-shitter
-shitters
-shittiest
-shitting
-shittings
-shitty
-shity
-shitz
-shiz
-shiznit
-shla
-shlong
-shortfuck
-shota
-shoytan
-shrimping
-sht
-shuala
-shuiya
-shuor
-shuorer baccha
-shurur batcha
-shutki
-shuyar
-shuyor
-shuyorer bacca
-shuyrer
-shuyrer bacca
-shylock
-shylocks
-shyt
-shyte
-shytty
-shyty
-simp
-sinal magir pu
-sissy
-sixsixsix
-sixtynine
-sixtyniner
-skag
-skanck
-skank
-skankbitch
-skankee
-skankey
-skankfuck
-skanks
 skankwhore
-skanky
-skankybitch
 skankywhore
-skeet
-skin flute
-skinflute
-skittle harvest
-skittles harvest
-skrib
-skribz
-skullfuck
-skullfucked
-skullfucker
-skullfucks
-skum
-skumbag
-skurwysyn
-skwa
-skwe
-slag
-slant
-slant eye
-slant-eye
-slanteye
-slanty
-slap the salami
-slaping the sausage
-slapper
-slaughter
-slave
-slavedriver
-sleaze
-sleazy
-sleezebag
-sleezeball
-slideitin
-slimeball
-slimebucket
-slit licker
-slitlicker
-slope
-slopehead
-slopeheads
-sloper
-slopers
-slopes
-slopey
-slopeys
-slopies
-slopy
 slut
 slut bag
 slutbag
@@ -4412,248 +750,34 @@ slutty
 slutwear
 slutwhore
 slutz
-smack
-smackthemonkey
-smeg
-smegma
-smoker
 smut
 smutty
-snatch
-snatchpatch
-snigger
-sniggered
-sniggering
-sniggers
-sniper
-snog
-snowback
-snowballing
-snownigger
-snuff
-sob
-socksucker
-sod off
-sodding
-sodne
-sodom
-sodomise
-sodomised
-sodomiser
-sodomist
-sodomite
-sodomize
-sodomized
-sodomizer
-sodomy
-sodon
-son of a bitch
-son of a whore
-son-of-a-bitch
-son-of-a-whore
-sonofabitch
-sonofbitch
-sooties
-sooty
-souse
-soused
-soyboy
-spac
-spade
-spades
-spaghettibender
-spaghettinigger
 spank
 spank the monkey
 spankthemonkey
-spastic
-spearchucker
-spearchuckers
 sperm
 spermacide
 spermbag
 spermhearder
 spermherder
-sphencter
-sphincter boy
-sphincter face
-sphincterboy
-sphincterface
-spic
-spick
-spicks
-spics
-spicy gringo
-spierdalaj
-spig
-spigotty
-spik
-spiks
-spitter
-splittail
-splooge
-splooge moose
-spludge
-spooge
-spread legs
-spreadeagle
-spunk
-spunk monkey
-spunky
-sqeh
-squa
-squarehead
-squareheads
-squaw
-squinty
-squirting
-stagg
-steamy
-stfu
-stiffy
-stoned
-stoner
-strap on
-strap-on
-strapon
-strappado
-stringer
 strip
 strip club
 stripclub
-stroke
-stroking
-stuinties
-stupid
-stupidfuck
-stupidfucker
-style doggy
-suastika
-suck
 suckdick
-sucked
-sucker
-sucking
-suckme
 suckmyass
 suckmydick
 suckmytit
-suckoff
-sucks
-suda-sudi
-sudanirfua
-sudaurier furii
-sudaury
-sudkhor
-suicide
-suicide girl
-suicide girls
-suicidegirl
-suicidegirls
-suka
-sultry
-sultry women
-sultrywoman
-sultrywomen
-sumofabiatch
-sumondi
-suorer baccha
-suourer bachcha
-suthh-marouny
-sutmurani
-svastika
-swallow
-swallower
-swalow
-swamp guinea
-swamp guineas
-swamp-guinea
-swastika
 swinger
-switch hitter
-syphilis
-t i t
-t i ts
-t-girl
-t1t
-t1tt1e5
-t1tties
-tabarnak
-taboo
-tacohead
-tacoheads
-taff
-taint
-tainted
-tainted love
-take off your
-taleban
-tampon
-tantra
-taphephile
-taphephilia
-tar babies
-tar baby
-tarbaby
-tard
-taste my
-tastemy
-tawdry
-tea bagged
-tea bagging
-tea-bagged
-tea-bagging
-teabagging
-teat
-teets
-teez
-tengri vaingga hate dhoraya dimu
-terd
-terror
-terrorist
-teste
-testee
 testes
-testical
 testicle
-testicle*
 testicles
 testicular
-testis
-tgirl
-thanatophile
-thanatophilia
-thicklip
-thicklips
-thirdeye
-thirdleg
-thjang kaitta putki da vira dum
-thjangga
-thor hetta laythum
 threesome
-threeway
-throat
-throating
 throbbing boner
 throbbing cock
-thrust
-thug
-thumbzilla
 thundercunt
-tied up
-tig ol bitties
-tig old bitties
-tight white
-timber nigger
-timber niggers
-timber-nigger
-timbernigger
-tinkeana
-tinkle
-tip polisher
 tit
 tit fuck
-tit fucker
 titbitnipply
 titfuck
 titfucker
@@ -4672,258 +796,49 @@ tittiefucker
 titties
 tittis
 titty
-titty twisted
-titty twister
-titty twisters
-titty twisting
 tittyfuck
 tittyfucker
 tittys
 tittywank
 titwank
 tity
-to mayre cudi
-to murder
-tobbar anda
-toke
-tongethruster
-tongue in a
-tongueina
-tonguethrust
-tonguetramp
-toots
 topless
-tor bap
-tor baper
-tor bapper hol tor buyer vodate
-tor gaar maari
-tor hurire digbaji
 tor janggiya khuilja agun lagay dimu
 tor maa ke chudi
-tor make cu*di
-tor mar
-tor mar vhoda
-tor mayer
-tor mayer oikhane bichatu pata
-tor mayere cicing fak
-tor mayre bap
-tor mayre cudi
-tor nanir heda
 tor nanir konkal re chudi
-tor putkit dhan choraiya corui diya khaoyamu
-tor voday bilai hjacra
-tortur
-torture
-tosser
-towel head
-towel heads
-towel-head
-towelhead
-tr00n
-tr00ns
-trailer trash
-trailertrash
-tramp
-trannie
-tranny
-transbian
 transsexual
 transvestite
-trashy
-traumatophile
-traumatophilia
-tribadism
-tribbing
-triplex
 trisexual
-trois
-trojan
-trombone
-troon
-troons
-trots
-tub girl
-tubgirl
-tuckahoe
-tufaner bichi
-tui kon chat er baal
-tui mor
-tui muri kha
-tui rohingga
-tunneloflove
-turd
-turd burgler
-turnon
-tush
-tushy
-tw4t
 twat
 twathead
 twatlips
 twats
 twatty
 twatwaffle
-twink
-twinkie
-two girls one cup
 twobitwhore
-twunt
-twunter
-udge packer
-ugly
-ukrop
-uncle tom
-unclefucker
-undies
 undressing
-unfuckable
-unwed
-uplay wid dix
-upskirt
-upta kira
-upta kira cudmu
 uptheass
 upthebutt
-urethra
-urethra play
-urethraplay
-urinal
-urinary
-urinate
-urine
-urophile
-urophilia
-usama
-ushta kha
-ussys
-uterus
-uzi
-v a g i n a
-v14gra
-v1gra
-v4gra
-va-j-j
-va1jina
-vadaima
-vadaimar
-vadaimja
-vadaimma
-vag
-vag1na
-vagiina
 vagina
 vagina licker
 vaginal
-vaj1na
-vajina
-valium
-vatar cuda
-vdai
-venus mound
-veraccoda
-vgra
 viagra
-viarge
-vibe
-vibr
-vibrater
 vibrator
-vietcong
-vigra
-violet wand
-vira
-vira dimu
 virgin
 virginbreaker
-vitre
-vittu
-vixen
-vjayjay
-voda
-vodai
-vodar
-vodar bal
-vodar jbala beshi
-voday
-vodka
-vogcod
 voirob magi
-vomit
-vorarephile
-vorarephilia
 voyeur
 voyeurweb
-voyuer
-vre
-vudar beta
-vulgar
-vullva
 vulva
 vushki magi
-vuski
-vuski cutmarani
-vuski magir pola
-vutkachoda
 vuuski magi
-w00se
-w0p
-wab
-wad
-wagon burner
-wagon-burner
-wang
 wank
-wank*
 wanker
 wanking
 wanky
-wax play
-wax-play
-waysted
-wazoo
-wedgie
-weed
-weenie
-weewee
-weiner
-weirdo
-welcher
-welfare rat
-wench
-wet back
 wet dream
-wet-back
-wetb
-wetback
-wetback*
-wetbacks
-wetdream
-wetspot
-wh00r
-wh0re
-wh0reface
-whacker
-whacking off
-whash
-whigger
-whiggers
 whiskeydick
 whiskydick
-whit
-white power
-white trash
-white-power
-whitenigger
-whitepower
-whites
-whitetrash
-whitey
-whiteys
-whities
-whiz
-whoar
-whop
-whoralicious
 whore
 whorealicious
 whorebag
@@ -4933,74 +848,29 @@ whorefucker
 whorehopper
 whorehouse
 whores
-whoring
-wichser
-wigga
-wiggas
-wigger
-wiggers
-wiitwd
-willie
-willies
 williewanker
-willy
-wog
-wogs
-wolfbagging
-womb
-woody
-woose
-wop
-wop*
 worldsex
-wrapping men
-wrapping the weasel
-wrinkled starfish
-wtf
-wuss
-wuzzie
 x rated
 x-rated
 x-rated2g1c
 xhamster
-xkwe
 xnxx
 xrated
-xtc
-xtube
 xvideos
 xxx
 xxxxxx
-xyrophile
-xyrophilia
-yank
 yaoi
-yarpie
-yarpies
 yclit
-yeasty
-yed
 yellow shower
 yellow showers
-yellowman
 yellowshowers
-yid
-yids
 yiffy
-yobbo
 yourboobs
 yourpenis
 yourtits
-yury
-zabourah
-zigabo
-zigabos
-zipper head
-zipper-head
-zipperhead
-zipperheads
-zippo cat
-zippo-cat
-zippocat
 zoophile
 zoophilia
+পর্ন
+চটি
+চটি গল্প
+sex tape
