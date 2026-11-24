@@ -9,8 +9,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
@@ -20,11 +18,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
+import android.view.DragEvent
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -1004,14 +1001,6 @@ class StatsScreen(private val a: MainActivity) {
             scrollHandler.postDelayed(this, 60)
         }
     }
-    // manual touch drag (no framework DragAndDrop): the card being dragged + its floating copy
-    private var dragCard: View? = null
-    private var dragOverlay: FrameLayout? = null
-    private var dragShadowView: ImageView? = null
-    private var dragBitmap: Bitmap? = null
-    private var dragW = 0
-    private var dragH = 0
-    private var lastDragEndAt = 0L
 
     fun build(): View {
         Store.finalizeIfExpired(a)
@@ -1122,6 +1111,7 @@ class StatsScreen(private val a: MainActivity) {
         cardOrder = loadCardOrder()
         gridWrap = LinearLayout(a)
         gridWrap.orientation = LinearLayout.VERTICAL
+        gridWrap.setOnDragListener(cardDragListener)
         col.addView(gridWrap, lp(MATCH, WRAP))
         renderGrid()
         return sv
@@ -1146,33 +1136,17 @@ class StatsScreen(private val a: MainActivity) {
         s.gravity = Gravity.CENTER
         c.addView(s, lp(MATCH, WRAP, t = a.dp(2), b = a.dp(14)))
         c.tag = key
-        c.setOnClickListener {
-            // a tap right after a drag ends must not open the card
-            if (SystemClock.uptimeMillis() - lastDragEndAt < 300) return@setOnClickListener
-            if (draggingKey == null) onOpen()
-        }
+        c.setOnDragListener(cardDragListener)
+        c.pressFeedback()
+        c.setOnClickListener { onOpen() }
         c.setOnLongClickListener {
-            // press-hold to drag: a floating copy of the card follows the finger
-            startManualDrag(c, key)
-            true
-        }
-        // press scale + drag tracking in one listener (pressFeedback() also uses
-        // a touch listener, so it would be replaced by this one)
-        c.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(90).start()
-                    false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    if (draggingKey == key) { moveManualDrag(event.rawX, event.rawY); true } else false
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(Motion.FAST).setInterpolator(Motion.EASE).start()
-                    if (draggingKey == key) { endManualDrag(); true } else false
-                }
-                else -> false
+            // press-hold to drag: the card lifts off, drop it where it should go
+            val started = c.startDragAndDrop(null, View.DragShadowBuilder(c), key, 0)
+            if (started) {
+                draggingKey = key
+                c.visibility = View.INVISIBLE
             }
+            started
         }
         return c
     }
@@ -1268,6 +1242,7 @@ class StatsScreen(private val a: MainActivity) {
             if (cardOrder[i] == draggingKey) x.visibility = View.INVISIBLE
             if (i + 1 < cardOrder.size && cardOrder[i + 1] == draggingKey) y.visibility = View.INVISIBLE
             val r = LinearLayout(a)
+            r.setOnDragListener(cardDragListener)
             r.addView(x, lp(0, MATCH, r = a.dp(10), weight = 1f))
             r.addView(y, lp(0, MATCH, weight = 1f))
             gridWrap.addView(r, lp(MATCH, WRAP, b = a.dp(10)))
@@ -1275,190 +1250,64 @@ class StatsScreen(private val a: MainActivity) {
         }
     }
 
-    /** Finds a quick card's view in the grid by its key (or null). */
-    private fun findQuickCardView(key: String): View? {
-        if (!::gridWrap.isInitialized) return null
-        for (i in 0 until gridWrap.childCount) {
-            val row = gridWrap.getChildAt(i) as? LinearLayout ?: continue
-            for (j in 0 until row.childCount) {
-                val v = row.getChildAt(j)
-                if (v.tag as? String == key) return v
-            }
-        }
-        return null
-    }
-
-    /** Layout params for a card in the left (with gap) or right slot of a row. */
-    private fun slotLp(isLeft: Boolean): LinearLayout.LayoutParams =
-        if (isLeft) lp(0, MATCH, r = a.dp(10), weight = 1f) else lp(0, MATCH, weight = 1f)
-
-    /** Swaps two quick cards' VIEWS in the grid (no views are created or destroyed,
-     * so the drag source stays alive while dragging). Returns false if either is missing. */
-    private fun swapQuickCardViews(keyA: String, keyB: String): Boolean {
-        if (!::gridWrap.isInitialized) return false
-        var rowA: LinearLayout? = null
-        var idxA = -1
-        var rowB: LinearLayout? = null
-        var idxB = -1
-        for (i in 0 until gridWrap.childCount) {
-            val row = gridWrap.getChildAt(i) as? LinearLayout ?: continue
-            for (j in 0 until row.childCount) {
-                val v = row.getChildAt(j)
-                when (v.tag as? String) {
-                    keyA -> { rowA = row; idxA = j }
-                    keyB -> { rowB = row; idxB = j }
+    /** Drag-and-drop for the quick cards: press-hold a card, drop it where it should go.
+     * Hovering over another card moves the dragged card there live (and saves the order),
+     * so the layout follows the finger; dropping anywhere in the grid finishes. */
+    private val cardDragListener = View.OnDragListener { v, event ->
+        when (event.action) {
+            DragEvent.ACTION_DRAG_STARTED -> true
+            DragEvent.ACTION_DRAG_ENTERED -> {
+                val targetKey = v.tag as? String
+                val dragKey = draggingKey
+                if (targetKey != null && dragKey != null && targetKey != dragKey) {
+                    val from = cardOrder.indexOf(dragKey)
+                    val to = cardOrder.indexOf(targetKey)
+                    if (from >= 0 && to >= 0 && from != to) {
+                        cardOrder.removeAt(from)
+                        cardOrder.add(to, dragKey)
+                        saveCardOrder()
+                        renderGrid()
+                    }
                 }
+                true
             }
-        }
-        val aRow = rowA ?: return false
-        val bRow = rowB ?: return false
-        val viewA = aRow.getChildAt(idxA)
-        val viewB = bRow.getChildAt(idxB)
-        if (aRow == bRow) {
-            val (lo, hi) = if (idxA < idxB) idxA to idxB else idxB to idxA
-            val loView = aRow.getChildAt(lo)
-            val hiView = aRow.getChildAt(hi)
-            aRow.removeViewAt(hi)
-            aRow.removeViewAt(lo)
-            aRow.addView(hiView, lo)
-            aRow.addView(loView, hi)
-            hiView.layoutParams = slotLp(lo == 0)
-            loView.layoutParams = slotLp(hi == 0)
-        } else {
-            aRow.removeView(viewA)
-            bRow.removeView(viewB)
-            aRow.addView(viewB, idxA)
-            bRow.addView(viewA, idxB)
-            viewB.layoutParams = slotLp(idxA == 0)
-            viewA.layoutParams = slotLp(idxB == 0)
-        }
-        return true
-    }
-
-    /** Manual touch drag for the quick cards (no framework DragAndDrop at all:
-     * the system drag kept throwing the app out to the home screen). Press-hold
-     * a card: a floating snapshot follows the finger, the layout swaps live
-     * under it, the screen auto-scrolls near the edges; release to drop. */
-    private fun startManualDrag(card: View, key: String) {
-        if (draggingKey != null) return
-        draggingKey = key
-        dragCard = card
-        dragW = card.width
-        dragH = card.height
-        // floating snapshot of the card, on an overlay above everything
-        try {
-            if (card.width > 0 && card.height > 0) {
-                val bmp = Bitmap.createBitmap(card.width, card.height, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bmp)
-                card.draw(canvas)
-                dragBitmap = bmp
-                val iv = ImageView(a)
-                iv.setImageBitmap(bmp)
-                val overlay = FrameLayout(a)
-                overlay.isClickable = false
-                overlay.isFocusable = false
-                val decor = a.window.decorView as ViewGroup
-                decor.addView(overlay, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                overlay.addView(iv, ViewGroup.LayoutParams(card.width, card.height))
-                dragOverlay = overlay
-                dragShadowView = iv
-                val loc = IntArray(2)
-                card.getLocationOnScreen(loc)
-                val decorLoc = IntArray(2)
-                decor.getLocationOnScreen(decorLoc)
-                iv.x = (loc[0] - decorLoc[0]).toFloat()
-                iv.y = (loc[1] - decorLoc[1]).toFloat()
-            }
-        } catch (_: Exception) {
-            // no floating copy — the drag still works, the card just goes invisible
-        }
-        card.visibility = View.INVISIBLE
-        // the ScrollView must not steal the touch stream mid-drag
-        card.parent?.requestDisallowInterceptTouchEvent(true)
-    }
-
-    /** The card (if any) whose CENTRAL zone contains the finger's screen position.
-     * The finger must be well inside a card — not just grazing its edge — before
-     * the dragged card swaps with it. Swapping on any touch made the cards
-     * jump at the slightest move, so the drag felt impossible to aim. */
-    private fun cardUnderPoint(rawX: Float, rawY: Float): String? {
-        if (!::gridWrap.isInitialized) return null
-        for (i in 0 until gridWrap.childCount) {
-            val row = gridWrap.getChildAt(i) as? LinearLayout ?: continue
-            for (j in 0 until row.childCount) {
-                val v = row.getChildAt(j)
-                val k = v.tag as? String ?: continue
-                if (k == draggingKey) continue
-                val loc = IntArray(2)
-                v.getLocationOnScreen(loc)
-                val cx0 = loc[0] + v.width * 0.25f
-                val cx1 = loc[0] + v.width * 0.75f
-                val cy0 = loc[1] + v.height * 0.25f
-                val cy1 = loc[1] + v.height * 0.75f
-                if (rawX >= cx0 && rawX <= cx1 && rawY >= cy0 && rawY <= cy1) {
-                    return k
+            DragEvent.ACTION_DRAG_LOCATION -> {
+                // track the finger for auto-scroll: convert to a y inside the stats ScrollView
+                val sv = statsScroll
+                if (sv != null && draggingKey != null) {
+                    val loc = IntArray(2)
+                    v.getLocationOnScreen(loc)
+                    val svLoc = IntArray(2)
+                    sv.getLocationOnScreen(svLoc)
+                    lastDragY = (loc[1] + event.y) - svLoc[1]
+                    if (!autoScrolling) {
+                        autoScrolling = true
+                        scrollHandler.post(autoScrollRunnable)
+                    }
                 }
+                true
             }
-        }
-        return null
-    }
-
-    /** Finger moved while dragging: move the floating copy, auto-scroll near the
-     * edges, and swap live with the card under the finger. */
-    private fun moveManualDrag(rawX: Float, rawY: Float) {
-        val shadow = dragShadowView
-        if (shadow != null) {
-            val decor = a.window.decorView as? ViewGroup
-            val decorLoc = IntArray(2)
-            decor?.getLocationOnScreen(decorLoc)
-            shadow.x = rawX - decorLoc[0] - dragW / 2f
-            shadow.y = rawY - decorLoc[1] - dragH / 2f
-        }
-        val sv = statsScroll
-        if (sv != null) {
-            val svLoc = IntArray(2)
-            sv.getLocationOnScreen(svLoc)
-            lastDragY = rawY - svLoc[1]
-            if (!autoScrolling) {
-                autoScrolling = true
-                scrollHandler.post(autoScrollRunnable)
-            }
-        }
-        val targetKey = cardUnderPoint(rawX, rawY)
-        val dragKey = draggingKey
-        if (targetKey != null && dragKey != null && targetKey != dragKey) {
-            val from = cardOrder.indexOf(dragKey)
-            val to = cardOrder.indexOf(targetKey)
-            if (from >= 0 && to >= 0 && from != to) {
-                cardOrder.removeAt(from)
-                cardOrder.add(to, dragKey)
+            DragEvent.ACTION_DROP -> {
                 saveCardOrder()
-                swapQuickCardViews(dragKey, targetKey)
+                draggingKey = null
+                scrollHandler.removeCallbacks(autoScrollRunnable)
+                autoScrolling = false
+                lastDragY = -1f
+                renderGrid()
+                true
             }
+            DragEvent.ACTION_DRAG_ENDED -> {
+                scrollHandler.removeCallbacks(autoScrollRunnable)
+                autoScrolling = false
+                lastDragY = -1f
+                if (draggingKey != null) {
+                    draggingKey = null
+                    renderGrid()
+                }
+                true
+            }
+            else -> true
         }
-    }
-
-    /** Finger lifted (or the touch was cancelled): drop the card where it is. */
-    private fun endManualDrag() {
-        val dc = dragCard
-        val dk = draggingKey
-        draggingKey = null
-        dragCard = null
-        val overlay = dragOverlay
-        if (overlay != null) {
-            (overlay.parent as? ViewGroup)?.removeView(overlay)
-            dragOverlay = null
-        }
-        dragShadowView = null
-        dragBitmap?.recycle()
-        dragBitmap = null
-        dc?.visibility = View.VISIBLE
-        if (dc == null && dk != null) findQuickCardView(dk)?.visibility = View.VISIBLE
-        scrollHandler.removeCallbacks(autoScrollRunnable)
-        autoScrolling = false
-        lastDragY = -1f
-        lastDragEndAt = SystemClock.uptimeMillis()
-        saveCardOrder()
     }
 
     /** ব্যাজের পুরো গ্রিড (ডায়ালগের ভেতরে দেখানোর জন্য)। */
