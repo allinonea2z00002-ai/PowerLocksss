@@ -594,7 +594,7 @@ class PowerBlockService : AccessibilityService() {
         val root = rootInActiveWindow ?: return
         if (root.findAccessibilityNodeInfosByText("PowerLock").isNotEmpty() && now - lastAction >= 300) {
             lastAction = now
-            Extra.logAttempt(this, "settings")
+            Extra.logAttempt(this, "settings", e.packageName?.toString() ?: "")
             performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }
@@ -603,7 +603,7 @@ class PowerBlockService : AccessibilityService() {
         val now = SystemClock.uptimeMillis()
         if (now - lastFocusAction < 300) return
         lastFocusAction = now
-        Extra.logAttempt(this, "focus")
+        Extra.logAttempt(this, "focus", e.packageName?.toString() ?: "")
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
@@ -621,7 +621,7 @@ class PowerBlockService : AccessibilityService() {
         lastBlockAt = now
         limitBlockActive = false // a lock block, not a limit block
         showBlockOverlay(pkg) // screen first: it must cover the app before anything else runs
-        Extra.logAttempt(this, "appblock")
+        Extra.logAttempt(this, "appblock", pkg)
     }
 
     // ---------- daily limits ----------
@@ -704,7 +704,7 @@ class PowerBlockService : AccessibilityService() {
         lastBlockAt = now
         limitBlockActive = true
         showBlockOverlay(pkg, L.t("Daily limit reached — opens again tomorrow", "দৈনিক লিমিট শেষ — আগামীকাল আবার খুলবে"))
-        Extra.logAttempt(this, "limit")
+        Extra.logAttempt(this, "limit", pkg)
     }
 
 
@@ -894,8 +894,14 @@ class PowerBlockService : AccessibilityService() {
      * triggers ([allowAnyApp]) any app counts — keywords block wherever
      * they are typed. Throttled: the same domain at most once per 2 s; a
      * new domain always refreshes the screen at once.
+     *
+     * [reason] is the diagnostics kind ("site" for DNS, "url" for an
+     * address-bar URL, "kw_url" for a keyword in a URL, "kw_typed" for a
+     * keyword typed in a text field, "kw_visible" for a keyword in visible
+     * screen text); [detail] is what matched (the domain or the keyword),
+     * defaulting to the displayed title.
      */
-    private fun onSiteBlocked(domain: String, pkg: String?, allowAnyApp: Boolean = false) {
+    private fun onSiteBlocked(domain: String, pkg: String?, allowAnyApp: Boolean = false, reason: String = "site", detail: String? = null) {
         try {
             if (!protecting()) return
             val fg = pkg ?: lastForegroundPkg
@@ -921,7 +927,7 @@ class PowerBlockService : AccessibilityService() {
             // NOT_FOCUSABLE, so Back reaches the app underneath,
             // not the overlay.
             try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
-            Extra.logAttempt(this, "site")
+            Extra.logAttempt(this, reason, fg, detail ?: domain)
         } catch (ex: Exception) {
             Log.e(TAG, "site block overlay failed", ex)
         }
@@ -1137,7 +1143,7 @@ class PowerBlockService : AccessibilityService() {
             Log.e(TAG, "keyword check failed", ex)
             return
         } ?: return
-        if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg)
+        if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, reason = "kw_url", detail = kw)
     }
 
     /**
@@ -1183,7 +1189,7 @@ class PowerBlockService : AccessibilityService() {
                 if (blocked) {
                     handler.post {
                         try {
-                            if (protecting()) onSiteBlocked(host, pkg)
+                            if (protecting()) onSiteBlocked(host, pkg, reason = "url")
                         } catch (ex: Exception) {
                             Log.e(TAG, "site overlay post failed", ex)
                         }
@@ -1337,7 +1343,7 @@ class PowerBlockService : AccessibilityService() {
             Log.e(TAG, "typed keyword match failed", ex)
             return
         } ?: return
-        if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true)
+        if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true, reason = "kw_typed", detail = kw)
     }
 
     /**
@@ -1371,7 +1377,7 @@ class PowerBlockService : AccessibilityService() {
                     Log.e(TAG, "visible text keyword match failed", ex)
                     return
                 } ?: return
-                if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true)
+                if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true, reason = "kw_visible", detail = kw)
             } finally {
                 try { root.recycle() } catch (_: Exception) { }
             }
@@ -1464,7 +1470,7 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastReelsBack < 1500) return
         lastAppBlockAction = now
         lastReelsBack = now
-        Extra.logAttempt(this, "reels")
+        Extra.logAttempt(this, "reels", e.packageName?.toString() ?: "")
         performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
@@ -1601,7 +1607,7 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastMsgAction < 500) return
         lastMsgAction = now
         clearFocusedSearchField() // erase the query so the next search starts empty
-        Extra.logAttempt(this, "msgsearch")
+        Extra.logAttempt(this, "msgsearch", e.packageName?.toString() ?: "")
         performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
@@ -2057,7 +2063,7 @@ class PowerBlockService : AccessibilityService() {
     // ---------- blocking ----------
 
     private fun block() {
-        Extra.logAttempt(this, "power")
+        Extra.logAttempt(this, "power", lastForegroundPkg ?: "")
         showOverlay() // shield first: from this moment the slider cannot be touched
         val now = SystemClock.uptimeMillis()
         if (now - lastAction >= 100) {

@@ -46,7 +46,9 @@ import android.widget.Toast
 import org.json.JSONArray
 import kotlin.math.sqrt
 import org.json.JSONObject
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 // =====================================================================
@@ -89,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "72"
+    const val BUILD_ID = "73"
 
     // ---------- extend time (never reduce) ----------
 
@@ -111,9 +113,19 @@ object Extra {
 
     private val lastLog = HashMap<String, Long>()
 
-    /** kind: "power", "settings", "focus", "appblock", "reels", "msgsearch", "limit" or "site". At most one entry per kind every 3 seconds. */
+    /** One diagnostics log entry: when, which check caught it, which app, what matched. */
+    data class DiagEvent(val t: Long, val k: String, val p: String, val d: String)
+
+    /**
+     * kind: "power", "settings", "focus", "appblock", "reels", "msgsearch", "limit",
+     * "site" (DNS), "url" (address-bar URL), "kw_url" (keyword in a URL),
+     * "kw_typed" (keyword typed in a text field) or "kw_visible" (keyword in
+     * visible screen text). At most one entry per kind every 3 seconds.
+     * [pkg] is the app the user was kicked out of; [detail] is what matched
+     * (the domain, the keyword or the host). Old rows have neither.
+     */
     @Synchronized
-    fun logAttempt(ctx: Context, kind: String) {
+    fun logAttempt(ctx: Context, kind: String, pkg: String = "", detail: String = "") {
         try {
             val now = System.currentTimeMillis()
             val last = lastLog[kind] ?: 0L
@@ -131,6 +143,8 @@ object Extra {
             val o = JSONObject()
             o.put("t", now)
             o.put("k", kind)
+            o.put("p", pkg)
+            o.put("d", detail)
             out.put(o)
             // lifetime block counter (the attempts list is capped at 1000): seeds once from the list
             val total = if (p.contains("blocks_total")) p.getLong("blocks_total", 0) else old.length().toLong()
@@ -153,6 +167,30 @@ object Extra {
             Log.e(TAG, "attempts read failed", e)
         }
         return out
+    }
+
+    /** Full diagnostics rows (time, kind, app package, what matched). Old rows yield "" for p/d. */
+    fun attemptsFull(ctx: Context): List<DiagEvent> {
+        val out = ArrayList<DiagEvent>()
+        try {
+            val arr = JSONArray(Store.lock(ctx).getString("attempts", "[]"))
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                out.add(DiagEvent(o.getLong("t"), o.getString("k"), o.optString("p", ""), o.optString("d", "")))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "attemptsFull read failed", e)
+        }
+        return out
+    }
+
+    /** Wipes the diagnostics log (the lifetime blocks_total counter is kept). */
+    fun clearAttempts(ctx: Context) {
+        try {
+            Store.lock(ctx).edit().remove("attempts").apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "clearAttempts failed", e)
+        }
     }
 
     // ---------- focus mode ----------
@@ -3375,7 +3413,7 @@ fun MainActivity.attemptsCard(): View {
             "reels" -> nReels++
             "msgsearch" -> nMsgSearch++
             "limit" -> nLimit++
-            "site" -> nSite++
+            "site", "url", "kw_url", "kw_typed", "kw_visible" -> nSite++
             else -> nFocus++
         }
     }
@@ -3420,6 +3458,85 @@ fun MainActivity.attemptsCard(): View {
         ),
         lp(MATCH, WRAP, t = dp(10))
     )
+    return c
+}
+
+// =====================================================================
+// UI: diagnostics log (which block fired, and what matched)
+// =====================================================================
+
+/** Bengali/English label for a log kind (see Extra.logAttempt). */
+private fun diagReasonLabel(kind: String): String = when (kind) {
+    "power" -> L.t("Power menu block", "পাওয়ার মেনু ব্লক")
+    "settings" -> L.t("Settings block", "সেটিংস ব্লক")
+    "focus" -> L.t("Focus app block", "ফোকাস অ্যাপ ব্লক")
+    "appblock" -> L.t("App block", "অ্যাপ ব্লক")
+    "limit" -> L.t("Daily limit", "দৈনিক লিমিট")
+    "reels" -> L.t("Reels block", "রিলস ব্লক")
+    "msgsearch" -> L.t("Search block", "সার্চ ব্লক")
+    "site" -> L.t("Site block (DNS)", "সাইট ব্লক (DNS)")
+    "url" -> L.t("Site block (URL)", "সাইট ব্লক (URL)")
+    "kw_url" -> L.t("Keyword in URL", "কিওয়ার্ড (URL-এ)")
+    "kw_typed" -> L.t("Keyword typed", "কিওয়ার্ড (টাইপ করা)")
+    "kw_visible" -> L.t("Keyword on screen", "কিওয়ার্ড (স্ক্রিনে)")
+    else -> L.t("Block", "ব্লক")
+}
+
+private fun MainActivity.appLabelFor(pkg: String): String {
+    if (pkg.isBlank()) return L.t("Unknown app", "অজানা অ্যাপ")
+    return try {
+        packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+    } catch (_: Exception) {
+        pkg
+    }
+}
+
+/** "17:22" today, "23 Nov, 17:22" on earlier days (digits localized). */
+private fun formatDiagTime(t: Long): String {
+    val todayStart = Store.dayStart(System.currentTimeMillis(), 0)
+    val sdf = if (t >= todayStart) SimpleDateFormat("HH:mm", Locale.getDefault())
+    else SimpleDateFormat("d MMM, HH:mm", Locale.getDefault())
+    return L.num(sdf.format(Date(t)))
+}
+
+private fun MainActivity.diagRow(ev: Extra.DiagEvent): View {
+    val row = LinearLayout(this)
+    row.orientation = LinearLayout.VERTICAL
+    val top = LinearLayout(this)
+    top.orientation = LinearLayout.HORIZONTAL
+    top.gravity = Gravity.CENTER_VERTICAL
+    top.addView(tv(appLabelFor(ev.p), 15f, C.text, 1), lp(0, WRAP, weight = 1f))
+    top.addView(tv(formatDiagTime(ev.t), 12f, C.muted))
+    row.addView(top, lp(MATCH, WRAP))
+    row.addView(tv(diagReasonLabel(ev.k), 13f, C.mint, 1), lp(MATCH, WRAP, t = dp(2)))
+    if (ev.d.isNotBlank()) {
+        row.addView(tv(L.t("Matched: ", "যা ধরা পড়লো: ") + ev.d, 13f, C.muted), lp(MATCH, WRAP, t = dp(2)))
+    }
+    return row
+}
+
+/** Diagnostics log card (Statistics tab): the last 30 blocks, newest first. */
+fun MainActivity.diagCard(): View {
+    val c = card()
+    c.addView(section(L.t("Diagnostics", "ডায়াগনস্টিক")))
+    c.addView(
+        tv(L.t("Why each block fired — newest first.", "প্রতিটি ব্লক কেন হলো — নতুন আগে।"), 12f, C.muted),
+        lp(MATCH, WRAP, t = dp(4))
+    )
+    val list = Extra.attemptsFull(this).takeLast(30).reversed()
+    if (list.isEmpty()) {
+        c.addView(tv(L.t("No blocks yet.", "এখনো কোনো ব্লক হয়নি।"), 14f, C.muted), lp(MATCH, WRAP, t = dp(8)))
+    } else {
+        for (ev in list) {
+            c.addView(diagRow(ev), lp(MATCH, WRAP, t = dp(10)))
+        }
+    }
+    val clear = outlineBtn(L.t("Clear log", "লগ মুছুন"), C.muted)
+    clear.setOnClickListener {
+        Extra.clearAttempts(this)
+        go(2)
+    }
+    c.addView(clear, lp(MATCH, WRAP, t = dp(12)))
     return c
 }
 
