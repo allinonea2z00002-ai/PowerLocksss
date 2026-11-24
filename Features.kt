@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "85"
+    const val BUILD_ID = "86"
 
     // ---------- extend time (never reduce) ----------
 
@@ -1933,6 +1933,16 @@ fun MainActivity.uninstallProtectCard(): View {
             texts.addView(tv(appLabelFor(pkg), 14f, C.text), lp(MATCH, WRAP))
             texts.addView(tv(pkg, 11f, C.muted), lp(MATCH, WRAP))
             row.addView(texts, lp(0, WRAP, weight = 1f))
+            // Remove this app from the protected list.
+            val remove = tv("✕", 18f, C.danger)
+            remove.setPadding(dp(8), dp(8), dp(8), dp(8))
+            remove.setOnClickListener {
+                val newSet = Extra.uninstallProtectApps(this).toMutableSet()
+                newSet.remove(pkg)
+                Extra.setUninstallProtectApps(this, newSet)
+                go(3)
+            }
+            row.addView(remove, lp(WRAP, WRAP, l = dp(8)))
             c.addView(row, lp(MATCH, WRAP, t = dp(8)))
         }
     }

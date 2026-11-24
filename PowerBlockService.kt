@@ -640,15 +640,15 @@ class PowerBlockService : AccessibilityService() {
      *    the Muse app itself). The one-level parent walk is safe because of
      *    that exact-text gate: a message bubble may be clickable, but its
      *    text is never exactly "Uninstall".
-     *  - the dialog title naming the app: one short node carrying both
+     *  - the dialog title naming the app: one node carrying both
      *    "Uninstall"/"আনইনস্টল" and a protected label, e.g.
      *    Uninstall "BlockP"? This is the gate that stops the false fires:
      *    a home-screen icon label, a chat message or an app list can show
      *    the same name anywhere on the screen, but only the uninstall
-     *    dialog puts both in one short title. So an app NOT in the list is
+     *    dialog puts both in one node. So an app NOT in the list is
      *    never blocked — its dialog title names it, not the protected app.
      *    It also catches the Play Store's uninstall dialog, which titles
-     *    it its own way but still names the app in one short line.
+     *    it its own way but still names the app in one node.
      * The label is read from the title node directly, so no full-window
      * text collection is needed here (that was the slow part).
      */
@@ -659,13 +659,18 @@ class PowerBlockService : AccessibilityService() {
             val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
             for (n in nodes) {
                 val text = n.text?.toString()?.trim() ?: ""
-                // Dialog title gate: one short node naming the app being
-                // uninstalled, e.g. Uninstall "BlockP"? The Play Store's
-                // uninstall dialog titles it its own way, so any short node
-                // carrying both the word and a protected label counts — a
-                // chat message is longer, and the button gate below must
-                // also pass, so plain words still cannot trigger it.
-                if (hitPkg == null && text.length <= 120) {
+                // Dialog title gate: one node naming the app being
+                // uninstalled, e.g. Uninstall "BlockP"? It must carry both
+                // the word and a protected label in the same node — a
+                // home-screen icon label and a menu item are separate
+                // nodes, so they never combine. The Play Store's uninstall
+                // dialog titles it its own way but still names the app in
+                // one node. No length cap: a dialog's title node can carry
+                // the whole dialog text, and capping it missed real
+                // dialogs. A chat message can also carry both, but the
+                // button gate below must also pass, so plain words still
+                // cannot trigger it.
+                if (hitPkg == null) {
                     val mentions = text.contains("Uninstall", ignoreCase = true) || text.contains("আনইনস্টল")
                     if (mentions) {
                         val m = labels.entries.firstOrNull { (_, label) -> text.contains(label) }
