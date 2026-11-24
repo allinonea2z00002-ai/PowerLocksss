@@ -16,6 +16,8 @@ import android.graphics.drawable.GradientDrawable
 import android.location.Location
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.DragEvent
@@ -979,10 +981,31 @@ class StatsScreen(private val a: MainActivity) {
     private var draggingKey: String? = null
     private var cardOrder = ArrayList<String>()
     private var qSummaries = HashMap<String, String>()
+    // auto-scroll while dragging: the stats ScrollView + last finger position
+    private var statsScroll: ScrollView? = null
+    private var lastDragY = -1f
+    private var autoScrolling = false
+    private val scrollHandler = Handler(Looper.getMainLooper())
+    private val autoScrollRunnable = object : Runnable {
+        override fun run() {
+            val sv = statsScroll
+            val y = lastDragY
+            if (draggingKey == null || sv == null || y < 0) { autoScrolling = false; return }
+            val edge = a.dp(100).toFloat()
+            val step = a.dp(24)
+            when {
+                y < edge -> sv.scrollBy(0, -step)
+                y > sv.height - edge -> sv.scrollBy(0, step)
+                else -> { /* finger is mid-screen; keep watching */ }
+            }
+            scrollHandler.postDelayed(this, 60)
+        }
+    }
 
     fun build(): View {
         Store.finalizeIfExpired(a)
         val (sv, col) = a.page()
+        statsScroll = sv
         val all = Store.sessions(a)
         val now = System.currentTimeMillis()
         val today = Store.dayStart(now, 0)
@@ -1080,7 +1103,7 @@ class StatsScreen(private val a: MainActivity) {
         qSummaries["focus7"] = L.t("Total ", "মোট ") + fmtDur(focus7Min * 60000L)
         qSummaries["record"] = L.t("Best: ", "সেরা: ") + fmtDur(longest)
         qSummaries["diag"] = L.t("Today: ", "আজ ") + L.num(blocksToday.toString()) + L.t(" blocks", "টি ব্লক")
-        qSummaries["score"] = L.num(scoreToday.score.toString()) + " / " + L.num("100") + " · " + L.num(blocksToday.toString()) + L.t(" blocks", "টি ব্লক")
+        qSummaries["score"] = L.num(scoreToday.score.toString()) + " / " + L.num("100")
         qSummaries["chart"] = L.t("Best: ", "সেরা: ") + bestDayLab + " · " + fmtDur(bestDayVal)
         qSummaries["week"] = L.t("This week: ", "এই সপ্তাহ: ") + fmtDur(thisWeekFocus)
         qSummaries["journey"] = L.num(String.format(Locale.US, "%.1f", journeyKm)) + " / " + L.num(Journey.TOTAL_KM.toString()) + L.t(" km", " কিমি")
@@ -1248,13 +1271,35 @@ class StatsScreen(private val a: MainActivity) {
                 }
                 true
             }
+            DragEvent.ACTION_DRAG_LOCATION -> {
+                // track the finger for auto-scroll: convert to a y inside the stats ScrollView
+                val sv = statsScroll
+                if (sv != null && draggingKey != null) {
+                    val loc = IntArray(2)
+                    v.getLocationOnScreen(loc)
+                    val svLoc = IntArray(2)
+                    sv.getLocationOnScreen(svLoc)
+                    lastDragY = (loc[1] + event.y) - svLoc[1]
+                    if (!autoScrolling) {
+                        autoScrolling = true
+                        scrollHandler.post(autoScrollRunnable)
+                    }
+                }
+                true
+            }
             DragEvent.ACTION_DROP -> {
                 saveCardOrder()
                 draggingKey = null
+                scrollHandler.removeCallbacks(autoScrollRunnable)
+                autoScrolling = false
+                lastDragY = -1f
                 renderGrid()
                 true
             }
             DragEvent.ACTION_DRAG_ENDED -> {
+                scrollHandler.removeCallbacks(autoScrollRunnable)
+                autoScrolling = false
+                lastDragY = -1f
                 if (draggingKey != null) {
                     draggingKey = null
                     renderGrid()
@@ -1587,7 +1632,58 @@ class StatsScreen(private val a: MainActivity) {
         )
     }
 
-    /** Focus-score card, built fresh on every open: score + detail + blocked-attempts card + share button. */
+    /** The 8 stat tiles (the board at the top of the tab), built fresh — shown inside the focus score dialog. */
+    private fun buildStatTiles(): View {
+        val all = Store.sessions(a)
+        val now = System.currentTimeMillis()
+        val today = Store.dayStart(now, 0)
+        val week = Store.dayStart(now, -6)
+        val month = Store.monthStart(now)
+        val end = Long.MAX_VALUE
+        val completed = all.count { it.ok }
+        var sum = 0L
+        var longest = 0L
+        for (s in all) {
+            sum += s.dur
+            if (s.dur > longest) longest = s.dur
+        }
+        val avg = if (all.isEmpty()) 0L else sum / all.size
+        val fs = Store.focusStats(a)
+        val board = LinearLayout(a)
+        board.orientation = LinearLayout.VERTICAL
+        fun statCard(icon: Ic, label: String, value: String): View {
+            val c = a.card(14)
+            c.addView(IconView(a, icon, C.primary), lp(a.dp(24), a.dp(24)))
+            c.addView(a.tv(value, 19f, C.text, 1), lp(MATCH, WRAP, t = a.dp(6)))
+            c.addView(a.tv(label, 12f, C.muted))
+            return c
+        }
+        fun pair(x: View, y: View) {
+            val r = LinearLayout(a)
+            r.addView(x, lp(0, MATCH, r = a.dp(10), weight = 1f))
+            r.addView(y, lp(0, MATCH, weight = 1f))
+            board.addView(r, lp(MATCH, WRAP, b = a.dp(10)))
+        }
+        pair(
+            statCard(Ic.CHECK, L.t("Day streak", "দিনের স্ট্রিক"), L.num(fs.streak.toString())),
+            statCard(Ic.CLOCK, L.t("Total focus", "মোট ফোকাস"), fmtDur(fs.totalMin * 60000L))
+        )
+        pair(
+            statCard(Ic.CLOCK, L.t("Today", "আজ"), fmtDur(Store.sumRange(all, today, end))),
+            statCard(Ic.CAL, L.t("Last 7 days", "গত ৭ দিন"), fmtDur(Store.sumRange(all, week, end)))
+        )
+        pair(
+            statCard(Ic.CAL, L.t("This month", "এই মাস"), fmtDur(Store.sumRange(all, month, end))),
+            statCard(Ic.CHECK, L.t("Completed sessions", "সম্পন্ন সেশন"), L.num(completed.toString()))
+        )
+        pair(
+            statCard(Ic.BARS, L.t("Average session", "গড় সেশন"), fmtDur(avg)),
+            statCard(Ic.SHIELD, L.t("Longest session", "সবচেয়ে বড় সেশন"), fmtDur(longest))
+        )
+        return board
+    }
+
+    /** Focus-score card, built fresh on every open: score + detail + the stat-tiles board + share button. */
     private fun buildFocusScoreCard(): View {
         val wrap = LinearLayout(a)
         wrap.orientation = LinearLayout.VERTICAL
@@ -1607,7 +1703,7 @@ class StatsScreen(private val a: MainActivity) {
             ), lp(MATCH, WRAP, t = a.dp(4))
         )
         wrap.addView(c, lp(MATCH, WRAP))
-        wrap.addView(a.attemptsCard(), lp(MATCH, WRAP, t = a.dp(12)))
+        wrap.addView(buildStatTiles(), lp(MATCH, WRAP, t = a.dp(12)))
         val shareBtn = a.primaryBtn(L.t("Share my focus card", "আমার ফোকাস কার্ড শেয়ার করুন"))
         shareBtn.setOnClickListener { FocusCardShare.share(a) }
         wrap.addView(shareBtn, lp(MATCH, a.dp(52), t = a.dp(12)))
