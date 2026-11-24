@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "84"
+    const val BUILD_ID = "85"
 
     // ---------- extend time (never reduce) ----------
 
@@ -1922,11 +1922,18 @@ fun MainActivity.uninstallProtectCard(): View {
         )
     } else {
         for (pkg in pkgs) {
-            val item = LinearLayout(this)
-            item.orientation = LinearLayout.VERTICAL
-            item.addView(tv(appLabelFor(pkg), 14f, C.text), lp(MATCH, WRAP))
-            item.addView(tv(pkg, 11f, C.muted), lp(MATCH, WRAP))
-            c.addView(item, lp(MATCH, WRAP, t = dp(6)))
+            val row = LinearLayout(this)
+            row.orientation = LinearLayout.HORIZONTAL
+            row.gravity = Gravity.CENTER_VERTICAL
+            val icon = ImageView(this)
+            try { icon.setImageDrawable(packageManager.getApplicationIcon(pkg)) } catch (_: Exception) { }
+            row.addView(icon, lp(dp(40), dp(40), r = dp(12)))
+            val texts = LinearLayout(this)
+            texts.orientation = LinearLayout.VERTICAL
+            texts.addView(tv(appLabelFor(pkg), 14f, C.text), lp(MATCH, WRAP))
+            texts.addView(tv(pkg, 11f, C.muted), lp(MATCH, WRAP))
+            row.addView(texts, lp(0, WRAP, weight = 1f))
+            c.addView(row, lp(MATCH, WRAP, t = dp(8)))
         }
     }
     val pick = outlineBtn(L.t("Choose apps", "অ্যাপ বাছুন"), C.primary)
