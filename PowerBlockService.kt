@@ -629,17 +629,45 @@ class PowerBlockService : AccessibilityService() {
     }
 
     /**
+     * "Uninstall" must sit on a real button the user can tap — a Button, or
+     * any clickable node carrying the word. Plain words on the screen are not
+     * enough: a chat message, a description or a web page mentioning
+     * "Uninstall" next to a protected app's name used to kick the user out of
+     * that app — even out of the Muse app itself. A real uninstall dialog,
+     * the App info page and the installer's confirmation all carry a genuine
+     * clickable Uninstall button, so the protection still fires there.
+     * No parent walk: a message bubble's container may itself be clickable,
+     * so only the matching node itself counts.
+     */
+    private fun hasUninstallButton(root: AccessibilityNodeInfo): Boolean {
+        for (word in listOf("Uninstall", "আনইনস্টল")) {
+            val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
+            var found = false
+            for (n in nodes) {
+                if (!found) {
+                    if (n.isClickable) found = true
+                    val cn = n.className?.toString()
+                    if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") found = true
+                }
+                try { n.recycle() } catch (_: Exception) { }
+            }
+            if (found) return true
+        }
+        return false
+    }
+
+    /**
      * Uninstall protection (instant, no lock needed): the installer — or a
      * system screen such as App info — is showing an uninstall confirmation
-     * for a protected app ("Uninstall" + the app's name in the window text).
-     * The block fires the moment the dialog appears: no 300 ms wait like
-     * [onGuarded], only a 1 s dedup against repeats. The user asked for this
-     * to be instant because uninstall is the sensitive one. Note this also
-     * sends Home from a protected app's App info page, since that page
-     * carries the same "Uninstall" button — that is part of the protection.
-     * Runs for ANY foreground package: on Vivo the long-press uninstall sheet
-     * comes from the launcher itself, not the installer, so a guarded-package
-     * check never sees it.
+     * for a protected app: a real clickable "Uninstall" button plus the app's
+     * name in the window text. The block fires the moment the dialog appears:
+     * no 300 ms wait like [onGuarded], only a 1 s dedup against repeats. The
+     * user asked for this to be instant because uninstall is the sensitive
+     * one. Note this also sends Home from a protected app's App info page,
+     * since that page carries the same "Uninstall" button — that is part of
+     * the protection. Runs for ANY foreground package: on Vivo the long-press
+     * uninstall sheet comes from the launcher itself, not the installer, so a
+     * guarded-package check never sees it.
      */
     private fun onUninstallAttempt(e: AccessibilityEvent) {
         val type = e.eventType
@@ -658,12 +686,14 @@ class PowerBlockService : AccessibilityService() {
         val labels = uninstallProtectLabels()
         if (labels.isEmpty()) return
         val root = rootInActiveWindow ?: return
+        // The Uninstall word must be a real button first — plain text is not
+        // enough (see hasUninstallButton). Only then read the window text
+        // for the protected app's name.
+        if (!hasUninstallButton(root)) return
         val sb = StringBuilder()
         collectVisibleText(root, sb)
         if (sb.isEmpty()) return
         val t = sb.toString()
-        val hasUninstallWord = t.contains("Uninstall", ignoreCase = true) || t.contains("আনইনস্টল")
-        if (!hasUninstallWord) return
         val hit = labels.entries.firstOrNull { (_, label) -> t.contains(label) } ?: return
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
