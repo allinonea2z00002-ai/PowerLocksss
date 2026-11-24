@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "83"
+    const val BUILD_ID = "84"
 
     // ---------- extend time (never reduce) ----------
 
@@ -1910,6 +1910,25 @@ fun MainActivity.uninstallProtectCard(): View {
         ),
         lp(MATCH, WRAP, t = dp(8))
     )
+    // Which apps cannot be uninstalled — the actual list, not just the count.
+    val pkgs = Extra.uninstallProtectApps(this).sorted()
+    if (pkgs.isEmpty()) {
+        c.addView(
+            tv(
+                L.t("No app protected yet — choose apps below.", "এখনো কোনো অ্যাপ সুরক্ষিত নয় — নিচে থেকে বাছুন।"),
+                12f, C.muted
+            ),
+            lp(MATCH, WRAP, t = dp(8))
+        )
+    } else {
+        for (pkg in pkgs) {
+            val item = LinearLayout(this)
+            item.orientation = LinearLayout.VERTICAL
+            item.addView(tv(appLabelFor(pkg), 14f, C.text), lp(MATCH, WRAP))
+            item.addView(tv(pkg, 11f, C.muted), lp(MATCH, WRAP))
+            c.addView(item, lp(MATCH, WRAP, t = dp(6)))
+        }
+    }
     val pick = outlineBtn(L.t("Choose apps", "অ্যাপ বাছুন"), C.primary)
     pick.setOnClickListener {
         groupAppPicker(Extra.uninstallProtectApps(this)) { newSet ->

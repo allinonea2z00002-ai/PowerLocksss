@@ -716,7 +716,7 @@ class PowerBlockService : AccessibilityService() {
         val pkg = e.packageName?.toString() ?: return
         if (pkg == packageName) return
         val now = SystemClock.uptimeMillis()
-        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 50) return
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 5) return
         lastUninstallScan = now
         val labels = uninstallProtectLabels()
         if (labels.isEmpty()) return
