@@ -1063,22 +1063,9 @@ class StatsScreen(private val a: MainActivity) {
         chartCard.addView(chart, lp(MATCH, a.dp(150), t = a.dp(12)))
         col.addView(chartCard, lp(MATCH, WRAP, t = a.dp(4), b = a.dp(14)))
 
-        // focus minutes per day (completed locks only), last 7 days
-        val focus7 = a.card()
-        focus7.addView(a.section(L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন")))
-        for (i in 6 downTo 0) {
-            val c = Calendar.getInstance()
-            c.add(Calendar.DAY_OF_YEAR, -i)
-            val label = if (i == 0) L.t("Today", "আজ") else L.dayLong(dayIdx(c))
-            val min = fs.last7[6 - i]
-            val r = LinearLayout(a)
-            r.gravity = Gravity.CENTER_VERTICAL
-            r.setPadding(0, a.dp(6), 0, a.dp(6))
-            r.addView(a.tv(label, 14f, C.text, 1), lp(0, WRAP, weight = 1f))
-            r.addView(a.tv(if (min > 0) fmtDur(min * 60000L) else "—", 14f, if (min > 0) C.mint else C.muted, 1))
-            focus7.addView(r)
-        }
-        col.addView(focus7, lp(MATCH, WRAP, b = a.dp(14)))
+        // (ফোকাস — গত ৭ দিন, ব্যাজ, লক ক্যালেন্ডার, অ্যাপ ব্যবহার, ব্যবহারের লগ,
+        // ডায়াগনস্টিক, গাছ ও বাগান, গল্প, রেকর্ড বোর্ড, সেশন ইতিহাস — নিচের
+        // আইকন-কার্ড গ্রিডে; ট্যাপ করলে আলাদা উইন্ডোতে খোলে।)
 
         // weekly comparison: this week (last 7 days) vs the week before it,
         // from the stored session + attempts history
@@ -1131,9 +1118,119 @@ class StatsScreen(private val a: MainActivity) {
         )
         col.addView(weekCard, lp(MATCH, WRAP, b = a.dp(14)))
 
-        // milestone badges: earned in colour with the date, unearned greyed out
-        val badgeCard = a.card()
-        badgeCard.addView(a.section(L.t("Badges", "ব্যাজ")))
+        // সব লম্বা সেকশন — কুইক অ্যাকশনের মতো আইকন কার্ডের গ্রিড (২ কলাম)।
+        // প্রতিটি কার্ডে ট্যাপ করলে সেকশনের পুরো কনটেন্ট আলাদা উইন্ডোতে খোলে।
+        val blue = Color.parseColor("#6AA5FF")
+        val usageToday = Extra.usageTodayAll(a)
+        val usageTodaySec = usageToday.values.sum()
+        val logTodaySec = Extra.usageDayTotal(a, Store.dayKey(0))
+        val treeStage = FocusTree.stageFor(fs.totalMin)
+        val gardenSize = Garden.sync(a).size
+        val storyUnlocked = Story.unlockedCount(a)
+        val storyRead = Story.readIds(a).size
+        val badgesEarned = Badges.earned(a).size
+        val lockedDays = Store.focusDayMap(a).size
+        val focus7Min = fs.last7.sum()
+        val blocksToday = Extra.attempts(a).count { it.first >= today }
+        pair(
+            iconCard(Ic.LIST, C.primary, L.t("Session history", "সেশন ইতিহাস"), L.num(all.size.toString()) + L.t(" sessions · ", "টি সেশন · ") + L.num(completed.toString()) + L.t(" completed", "টি সম্পন্ন")) {
+                a.showSectionDialog(L.t("Session history", "সেশন ইতিহাস"), buildHistoryBody(all))
+            },
+            iconCard(Ic.BOOK, C.warn, L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), L.num(storyUnlocked.toString()) + "/" + L.num(Story.TOTAL.toString()) + L.t(" chapters · ", " অধ্যায় · ") + L.num(storyRead.toString()) + L.t(" read", "টি পড়া")) {
+                a.showSectionDialog(L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), a.storyCard())
+            }
+        )
+        pair(
+            iconCard(Ic.LEAF, C.mint, L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), L.t(treeStage.nameEn, treeStage.nameBn) + " · " + L.num(gardenSize.toString()) + L.t(" plants", "টি গাছ")) {
+                a.showSectionDialog(L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), a.treeGardenCard())
+            },
+            iconCard(Ic.CAL, blue, L.t("Usage log", "ব্যবহারের লগ"), L.t("Today: ", "আজ মোট ") + fmtDur(logTodaySec * 1000L)) {
+                a.showSectionDialog(L.t("Usage log", "ব্যবহারের লগ"), buildUsageLogCard())
+            }
+        )
+        pair(
+            iconCard(Ic.BARS, C.danger, L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), fmtDur(usageTodaySec * 1000L) + " · " + L.num(usageToday.size.toString()) + L.t(" apps", "টি অ্যাপ")) {
+                usageCard = a.card()
+                buildUsageCardBody()
+                a.showSectionDialog(L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), usageCard)
+            },
+            iconCard(Ic.AWARD, C.warn, L.t("Badges", "ব্যাজ"), L.num(badgesEarned.toString()) + "/" + L.num(Badges.ALL.size.toString()) + L.t(" badges earned", "টি ব্যাজ পেয়েছেন")) {
+                a.showSectionDialog(L.t("Badges", "ব্যাজ"), buildBadgesBody())
+            }
+        )
+        pair(
+            iconCard(Ic.LOCK, C.primary, L.t("Lock calendar", "লক ক্যালেন্ডার"), L.num(lockedDays.toString()) + L.t(" days locked", " দিন লক")) {
+                a.showSectionDialog(L.t("Lock calendar", "লক ক্যালেন্ডার"), buildCalendarCard())
+            },
+            iconCard(Ic.CLOCK, blue, L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন"), L.t("Total ", "মোট ") + fmtDur(focus7Min * 60000L)) {
+                a.showSectionDialog(L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন"), buildFocus7Body())
+            }
+        )
+        pair(
+            iconCard(Ic.TROPHY, C.mint, L.t("Record board", "রেকর্ড বোর্ড"), L.t("Best: ", "সেরা: ") + fmtDur(longest)) {
+                recordCard = a.card()
+                buildRecordBoardBody()
+                a.showSectionDialog(L.t("Record board", "রেকর্ড বোর্ড"), recordCard)
+            },
+            iconCard(Ic.SHIELD, C.danger, L.t("Diagnostics", "ডায়াগনস্টিক"), L.t("Today: ", "আজ ") + L.num(blocksToday.toString()) + L.t(" blocks", "টি ব্লক")) {
+                a.showDiagDialog()
+            }
+        )
+
+        // (ব্যাজ — নিচের আইকন-কার্ড গ্রিডে।)
+
+        // (লক ক্যালেন্ডার — নিচের আইকন-কার্ড গ্রিডে।)
+
+        // (আজকের অ্যাপ ব্যবহার — নিচের আইকন-কার্ড গ্রিডে; ডায়ালগ খুললে tick() লাইভ আপডেট করে।)
+
+        // (ব্যবহারের লগ — নিচের আইকন-কার্ড গ্রিডে।)
+
+        // temptation counter: blocked attempts (today / 7 days / total + per kind)
+        col.addView(a.attemptsCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // (ডায়াগনস্টিক — নিচের আইকন-কার্ড গ্রিডে; ট্যাপ করলে পুরো লগের উইন্ডো খোলে।)
+
+        // companions: pet Mimi stays here; tree & garden and story are in the icon-card grid below
+        col.addView(a.petCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // goals & play: lucky wheel, focus journey, mini-games
+        col.addView(a.wheelCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        col.addView(a.journeyCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        col.addView(a.gamesCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // (রেকর্ড বোর্ড — নিচের আইকন-কার্ড গ্রিডে।)
+
+        // (সেশন ইতিহাস — নিচের আইকন-কার্ড গ্রিডে।)
+        return sv
+    }
+
+    /** কুইক অ্যাকশনের মতো আইকন কার্ড: রঙিন বৃত্তে আইকন + শিরোনাম + এক লাইন সারাংশ।
+     * ট্যাপ করলে onOpen() চলে — সেকশনের পুরো কনটেন্ট আলাদা উইন্ডোতে খোলে। */
+    private fun iconCard(icon: Ic, iconColor: Int, title: String, summary: String, onOpen: () -> Unit): View {
+        val c = a.card(14)
+        val circle = LinearLayout(a)
+        circle.gravity = Gravity.CENTER
+        circle.background = rounded(tint(iconColor, 0x33), a.dp(32).toFloat())
+        circle.addView(IconView(a, icon, iconColor), lp(a.dp(30), a.dp(30)))
+        val circleWrap = LinearLayout(a)
+        circleWrap.gravity = Gravity.CENTER
+        circleWrap.addView(circle, lp(a.dp(64), a.dp(64)))
+        c.addView(circleWrap, lp(MATCH, WRAP, t = a.dp(14)))
+        val t = a.tv(title, 15f, C.text, 1)
+        t.gravity = Gravity.CENTER
+        c.addView(t, lp(MATCH, WRAP, t = a.dp(10)))
+        val s = a.tv(summary, 12f, C.muted)
+        s.gravity = Gravity.CENTER
+        c.addView(s, lp(MATCH, WRAP, t = a.dp(2), b = a.dp(14)))
+        c.pressFeedback()
+        c.setOnClickListener { onOpen() }
+        return c
+    }
+
+    /** ব্যাজের পুরো গ্রিড (ডায়ালগের ভেতরে দেখানোর জন্য)। */
+    private fun buildBadgesBody(): View {
+        val body = LinearLayout(a)
+        body.orientation = LinearLayout.VERTICAL
         val earned = Badges.earned(a)
         val badgeDefs = Badges.ALL
         for (rowIdx in badgeDefs.indices step 2) {
@@ -1166,63 +1263,45 @@ class StatsScreen(private val a: MainActivity) {
                 }
                 row.addView(cell, lp(0, MATCH, r = if (j == 0) a.dp(10) else 0, t = a.dp(10), weight = 1f))
             }
-            badgeCard.addView(row)
+            body.addView(row)
         }
-        col.addView(badgeCard, lp(MATCH, WRAP, b = a.dp(14)))
+        return body
+    }
 
-        // lock calendar: a dot on every day a lock was completed
-        val calCard = a.card()
-        calCard.addView(a.section(L.t("Lock calendar", "লক ক্যালেন্ডার")))
-        val navRow = LinearLayout(a)
-        navRow.gravity = Gravity.CENTER_VERTICAL
-        val prevBtn = a.tv("‹", 28f, C.primary, 1)
-        prevBtn.setPadding(a.dp(12), 0, a.dp(12), 0)
-        prevBtn.setOnClickListener {
-            if (calOffset > -3) {
-                calOffset--
-                buildCalendar()
+    /** সেশন ইতিহাসের পুরো তালিকা (শেষ ৩০টি, ডায়ালগের ভেতরে)। */
+    private fun buildHistoryBody(all: List<Session>): View {
+        val body = LinearLayout(a)
+        body.orientation = LinearLayout.VERTICAL
+        if (all.isEmpty()) {
+            val e = a.tv(L.t("No sessions yet", "এখনো কোনো সেশন নেই"), 14f, C.muted)
+            e.gravity = Gravity.CENTER
+            body.addView(e, lp(MATCH, WRAP, t = a.dp(16), b = a.dp(8)))
+        } else {
+            for (s in all.reversed().take(30)) {
+                val r = LinearLayout(a)
+                r.gravity = Gravity.CENTER_VERTICAL
+                r.setPadding(0, a.dp(10), 0, a.dp(10))
+                val left = LinearLayout(a)
+                left.orientation = LinearLayout.VERTICAL
+                left.addView(a.tv(fmtDate(s.start) + " · " + fmtClock(s.start), 14f, C.text, 1))
+                val src = when (s.src) {
+                    "schedule" -> L.t("Scheduled", "সময়সূচি")
+                    "routine" -> L.t("Routine", "রুটিন")
+                    "pomodoro" -> "Pomodoro"
+                    else -> L.t("Manual", "ম্যানুয়াল")
+                }
+                val state = if (s.ok) L.t("Completed", "সম্পন্ন") else L.t("Stopped early", "আগেই বন্ধ")
+                left.addView(a.tv("$src · $state", 12f, C.muted))
+                r.addView(left, lp(0, WRAP, weight = 1f))
+                r.addView(a.tv(fmtDur(s.dur), 15f, if (s.ok) C.mint else C.warn, 1))
+                body.addView(r)
             }
         }
-        val nextBtn = a.tv("›", 28f, C.primary, 1)
-        nextBtn.setPadding(a.dp(12), 0, a.dp(12), 0)
-        nextBtn.setOnClickListener {
-            if (calOffset < 0) {
-                calOffset++
-                buildCalendar()
-            }
-        }
-        calLabel = a.tv("", 16f, C.text, 1)
-        calLabel.gravity = Gravity.CENTER
-        navRow.addView(prevBtn)
-        navRow.addView(calLabel, lp(0, WRAP, weight = 1f))
-        navRow.addView(nextBtn)
-        calCard.addView(navRow, lp(MATCH, WRAP, t = a.dp(8)))
-        // weekday header, Monday first
-        val headRow = LinearLayout(a)
-        for (i in 0 until 7) {
-            val h = a.tv(L.dayShort(i), 12f, C.muted, 1)
-            h.gravity = Gravity.CENTER
-            headRow.addView(h, lp(0, WRAP, weight = 1f))
-        }
-        calCard.addView(headRow, lp(MATCH, WRAP, t = a.dp(10)))
-        calGrid = LinearLayout(a)
-        calGrid.orientation = LinearLayout.VERTICAL
-        calCard.addView(calGrid, lp(MATCH, WRAP, t = a.dp(4)))
-        calDetail = a.tv("", 13f, C.muted)
-        calDetail.gravity = Gravity.CENTER
-        calCard.addView(calDetail, lp(MATCH, WRAP, t = a.dp(10)))
-        col.addView(calCard, lp(MATCH, WRAP, b = a.dp(14)))
-        buildCalendar()
+        return body
+    }
 
-        // today's app usage (all apps, tracked by the accessibility service):
-        // most-used first. Tapping a row opens its daily-limit setting.
-        // The body is rebuilt by tick() so the numbers move live.
-        usageCard = a.card()
-        buildUsageCardBody()
-        col.addView(usageCard, lp(MATCH, WRAP, b = a.dp(14)))
-
-        // per-day usage log (30 days of history): pick a day, see per-app
-        // minutes that day
+    /** ব্যবহারের লগের পুরো কার্ড (দিন বদলের ন্যাভ + বডি, ডায়ালগের ভেতরে)। */
+    private fun buildUsageLogCard(): View {
         val logCard = a.card()
         logCard.addView(a.section(L.t("Usage log", "ব্যবহারের লগ")))
         val logNav = LinearLayout(a)
@@ -1252,60 +1331,73 @@ class StatsScreen(private val a: MainActivity) {
         usageLogBody = LinearLayout(a)
         usageLogBody.orientation = LinearLayout.VERTICAL
         logCard.addView(usageLogBody, lp(MATCH, WRAP, t = a.dp(4)))
-        col.addView(logCard, lp(MATCH, WRAP, b = a.dp(14)))
         buildUsageLogBody()
+        return logCard
+    }
 
-        // temptation counter: blocked attempts (today / 7 days / total + per kind)
-        col.addView(a.attemptsCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // diagnostics: why each block fired, and what matched
-        col.addView(a.diagCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // companions: focus tree + garden + animals, pet Mimi, story
-        col.addView(a.treeGardenCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.petCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.storyCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // goals & play: lucky wheel, focus journey, mini-games
-        col.addView(a.wheelCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.journeyCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.gamesCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // record board: best-ever numbers, computed live from stored history
-        recordCard = a.card()
-        buildRecordBoardBody()
-        col.addView(recordCard, lp(MATCH, WRAP, b = a.dp(14)))
-
-        // history
-        val hist = a.card()
-        hist.addView(a.section(L.t("Session history", "সেশন ইতিহাস")))
-        if (all.isEmpty()) {
-            val e = a.tv(L.t("No sessions yet", "এখনো কোনো সেশন নেই"), 14f, C.muted)
-            e.gravity = Gravity.CENTER
-            hist.addView(e, lp(MATCH, WRAP, t = a.dp(16), b = a.dp(8)))
-        } else {
-            for (s in all.reversed().take(30)) {
-                val r = LinearLayout(a)
-                r.gravity = Gravity.CENTER_VERTICAL
-                r.setPadding(0, a.dp(10), 0, a.dp(10))
-                val left = LinearLayout(a)
-                left.orientation = LinearLayout.VERTICAL
-                left.addView(a.tv(fmtDate(s.start) + " · " + fmtClock(s.start), 14f, C.text, 1))
-                val src = when (s.src) {
-                    "schedule" -> L.t("Scheduled", "সময়সূচি")
-                    "routine" -> L.t("Routine", "রুটিন")
-                    "pomodoro" -> "Pomodoro"
-                    else -> L.t("Manual", "ম্যানুয়াল")
-                }
-                val state = if (s.ok) L.t("Completed", "সম্পন্ন") else L.t("Stopped early", "আগেই বন্ধ")
-                left.addView(a.tv("$src · $state", 12f, C.muted))
-                r.addView(left, lp(0, WRAP, weight = 1f))
-                r.addView(a.tv(fmtDur(s.dur), 15f, if (s.ok) C.mint else C.warn, 1))
-                hist.addView(r)
+    /** লক ক্যালেন্ডারের পুরো কার্ড (মাস বদলের ন্যাভ + গ্রিড, ডায়ালগের ভেতরে)। */
+    private fun buildCalendarCard(): View {
+        val calCard = a.card()
+        calCard.addView(a.section(L.t("Lock calendar", "লক ক্যালেন্ডার")))
+        val navRow = LinearLayout(a)
+        navRow.gravity = Gravity.CENTER_VERTICAL
+        val prevBtn = a.tv("‹", 28f, C.primary, 1)
+        prevBtn.setPadding(a.dp(12), 0, a.dp(12), 0)
+        prevBtn.setOnClickListener {
+            if (calOffset > -3) {
+                calOffset--
+                buildCalendar()
             }
         }
-        col.addView(hist)
-        return sv
+        val nextBtn = a.tv("›", 28f, C.primary, 1)
+        nextBtn.setPadding(a.dp(12), 0, a.dp(12), 0)
+        nextBtn.setOnClickListener {
+            if (calOffset < 0) {
+                calOffset++
+                buildCalendar()
+            }
+        }
+        calLabel = a.tv("", 16f, C.text, 1)
+        calLabel.gravity = Gravity.CENTER
+        navRow.addView(prevBtn)
+        navRow.addView(calLabel, lp(0, WRAP, weight = 1f))
+        navRow.addView(nextBtn)
+        calCard.addView(navRow, lp(MATCH, WRAP, t = a.dp(8)))
+        val headRow = LinearLayout(a)
+        for (i in 0 until 7) {
+            val h = a.tv(L.dayShort(i), 12f, C.muted, 1)
+            h.gravity = Gravity.CENTER
+            headRow.addView(h, lp(0, WRAP, weight = 1f))
+        }
+        calCard.addView(headRow, lp(MATCH, WRAP, t = a.dp(10)))
+        calGrid = LinearLayout(a)
+        calGrid.orientation = LinearLayout.VERTICAL
+        calCard.addView(calGrid, lp(MATCH, WRAP, t = a.dp(4)))
+        calDetail = a.tv("", 13f, C.muted)
+        calDetail.gravity = Gravity.CENTER
+        calCard.addView(calDetail, lp(MATCH, WRAP, t = a.dp(10)))
+        buildCalendar()
+        return calCard
+    }
+
+    /** ফোকাস — গত ৭ দিনের পুরো তালিকা (ডায়ালগের ভেতরে)। */
+    private fun buildFocus7Body(): View {
+        val body = LinearLayout(a)
+        body.orientation = LinearLayout.VERTICAL
+        val fs = Store.focusStats(a)
+        for (i in 6 downTo 0) {
+            val c = Calendar.getInstance()
+            c.add(Calendar.DAY_OF_YEAR, -i)
+            val label = if (i == 0) L.t("Today", "আজ") else L.dayLong(dayIdx(c))
+            val min = fs.last7[6 - i]
+            val r = LinearLayout(a)
+            r.gravity = Gravity.CENTER_VERTICAL
+            r.setPadding(0, a.dp(6), 0, a.dp(6))
+            r.addView(a.tv(label, 14f, C.text, 1), lp(0, WRAP, weight = 1f))
+            r.addView(a.tv(if (min > 0) fmtDur(min * 60000L) else "—", 14f, if (min > 0) C.mint else C.muted, 1))
+            body.addView(r)
+        }
+        return body
     }
 
     /** Live tick from the MainActivity ticker (throttled to every 5 s): rebuilds
@@ -1315,11 +1407,12 @@ class StatsScreen(private val a: MainActivity) {
         if (now - lastStatsTick < 5000) return
         lastStatsTick = now
         try {
-            if (!::usageCard.isInitialized) return
-            buildUsageCardBody()
-            if (usageLogOffset == 0) buildUsageLogBody() // only today's log moves
+            if (::usageCard.isInitialized) {
+                buildUsageCardBody()
+                if (usageLogOffset == 0) buildUsageLogBody() // only today's log moves
+            }
             refreshFocusScore()
-            buildRecordBoardBody()
+            if (::recordCard.isInitialized) buildRecordBoardBody()
         } catch (e: Exception) {
             Log.e(TAG, "stats tick failed", e)
         }
@@ -1330,7 +1423,7 @@ class StatsScreen(private val a: MainActivity) {
      * setting. Rebuilt on every live tick so the numbers move. */
     private fun buildUsageCardBody() {
         usageCard.removeAllViews()
-        usageCard.addView(a.section(L.t("App usage today", "আজকের অ্যাপ ব্যবহার")))
+        // (শিরোনাম নেই — ডায়ালগের টাইটেলই শিরোনাম।)
         val usageToday = Extra.usageTodayAll(a)
         val usage7 = Extra.usage7DayTotal(a)
         if (usageToday.isEmpty()) {
@@ -1399,6 +1492,7 @@ class StatsScreen(private val a: MainActivity) {
     /** (Re)builds the per-day usage log for [usageLogOffset] days ago:
      * every app's minutes that day, most-used first, plus the day total. */
     private fun buildUsageLogBody() {
+        if (!::usageLogBody.isInitialized || !::usageLogLabel.isInitialized) return
         usageLogLabel.text = when (usageLogOffset) {
             0 -> L.t("Today", "আজ")
             1 -> L.t("Yesterday", "গতকাল")
@@ -1459,6 +1553,7 @@ class StatsScreen(private val a: MainActivity) {
      * most locks in one day, most blocks in one day, longest streak. Because
      * the values are computed live, a broken record shows up at once. */
     private fun buildRecordBoardBody() {
+        if (!::recordCard.isInitialized) return
         recordCard.removeAllViews()
         recordCard.addView(a.section(L.t("Record board", "রেকর্ড বোর্ড")))
         val all = Store.sessions(a)
@@ -1505,6 +1600,7 @@ class StatsScreen(private val a: MainActivity) {
 
     /** Rebuilds the month grid for the current [calOffset]. */
     private fun buildCalendar() {
+        if (!::calGrid.isInitialized) return
         val focus = Store.focusDayMap(a)
         val c = Calendar.getInstance()
         c.add(Calendar.MONTH, calOffset)

@@ -308,7 +308,7 @@ fun Context.page(): Pair<ScrollView, LinearLayout> {
     return Pair(sv, col)
 }
 
-enum class Ic { HOME, CAL, BARS, GEAR, SHIELD, LOCK, CLOCK, CHECK, PIN }
+enum class Ic { HOME, CAL, BARS, GEAR, SHIELD, LOCK, CLOCK, CHECK, PIN, LIST, BOOK, LEAF, AWARD, TROPHY }
 
 /** Line icons drawn with Canvas (no image files needed). */
 object Icons {
@@ -409,6 +409,64 @@ object Icons {
                 path.close()
                 cv.drawPath(path, p)
                 cv.drawCircle(cx, y(0.40f), s * 0.09f, p)
+            }
+            Ic.LIST -> {
+                // list: three lines with dots
+                p.strokeWidth = s * 0.12f
+                cv.drawLine(x(0.30f), y(0.28f), x(0.82f), y(0.28f), p)
+                cv.drawLine(x(0.30f), y(0.50f), x(0.82f), y(0.50f), p)
+                cv.drawLine(x(0.30f), y(0.72f), x(0.82f), y(0.72f), p)
+                p.style = Paint.Style.FILL
+                cv.drawCircle(x(0.18f), y(0.28f), s * 0.05f, p)
+                cv.drawCircle(x(0.18f), y(0.50f), s * 0.05f, p)
+                cv.drawCircle(x(0.18f), y(0.72f), s * 0.05f, p)
+                p.style = Paint.Style.STROKE
+            }
+            Ic.BOOK -> {
+                // closed book with text lines
+                cv.drawRoundRect(RectF(x(0.16f), y(0.20f), x(0.84f), y(0.82f)), s * 0.08f, s * 0.08f, p)
+                cv.drawLine(x(0.50f), y(0.20f), x(0.50f), y(0.82f), p)
+                cv.drawLine(x(0.58f), y(0.34f), x(0.76f), y(0.34f), p)
+                cv.drawLine(x(0.58f), y(0.50f), x(0.76f), y(0.50f), p)
+                cv.drawLine(x(0.24f), y(0.34f), x(0.42f), y(0.34f), p)
+                cv.drawLine(x(0.24f), y(0.50f), x(0.42f), y(0.50f), p)
+            }
+            Ic.LEAF -> {
+                // leaf outline + centre vein
+                path.moveTo(x(0.50f), y(0.88f))
+                path.cubicTo(x(0.20f), y(0.70f), x(0.16f), y(0.38f), x(0.50f), y(0.12f))
+                path.cubicTo(x(0.84f), y(0.38f), x(0.80f), y(0.70f), x(0.50f), y(0.88f))
+                path.close()
+                path.moveTo(x(0.50f), y(0.82f))
+                path.lineTo(x(0.50f), y(0.28f))
+                cv.drawPath(path, p)
+            }
+            Ic.AWARD -> {
+                // medal: circle + two ribbons below + centre dot
+                cv.drawCircle(cx, y(0.38f), s * 0.24f, p)
+                path.moveTo(x(0.38f), y(0.58f))
+                path.lineTo(x(0.30f), y(0.86f))
+                path.moveTo(x(0.62f), y(0.58f))
+                path.lineTo(x(0.70f), y(0.86f))
+                cv.drawPath(path, p)
+                p.style = Paint.Style.FILL
+                cv.drawCircle(cx, y(0.38f), s * 0.06f, p)
+                p.style = Paint.Style.STROKE
+            }
+            Ic.TROPHY -> {
+                // cup: bowl + stem + base
+                path.moveTo(x(0.28f), y(0.14f))
+                path.lineTo(x(0.72f), y(0.14f))
+                path.lineTo(x(0.68f), y(0.40f))
+                path.cubicTo(x(0.66f), y(0.52f), x(0.58f), y(0.56f), x(0.50f), y(0.56f))
+                path.cubicTo(x(0.42f), y(0.56f), x(0.34f), y(0.52f), x(0.32f), y(0.40f))
+                path.lineTo(x(0.28f), y(0.14f))
+                path.close()
+                path.moveTo(x(0.50f), y(0.56f))
+                path.lineTo(x(0.50f), y(0.74f))
+                path.moveTo(x(0.34f), y(0.86f))
+                path.lineTo(x(0.66f), y(0.86f))
+                cv.drawPath(path, p)
             }
         }
     }

@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "74"
+    const val BUILD_ID = "77"
 
     // ---------- extend time (never reduce) ----------
 
@@ -3596,7 +3596,7 @@ fun MainActivity.diagCard(): View {
 }
 
 /** Full diagnostics log in a separate window (dialog): the last 100 blocks, newest first. */
-private fun MainActivity.showDiagDialog() {
+fun MainActivity.showDiagDialog() {
     val list = Extra.attemptsFull(this).takeLast(100).reversed()
     val body = LinearLayout(this)
     body.orientation = LinearLayout.VERTICAL
@@ -3620,6 +3620,24 @@ private fun MainActivity.showDiagDialog() {
             Extra.clearAttempts(this)
             go(2)
         }
+        .setNegativeButton(L.t("Close", "বন্ধ করুন"), null)
+        .show()
+}
+
+/** পরিসংখ্যানের লম্বা সেকশনগুলোর জন্য আলাদা উইন্ডো: ট্যাপ করলে খোলে। */
+fun MainActivity.showSectionDialog(title: String, content: View) {
+    val body = LinearLayout(this)
+    body.orientation = LinearLayout.VERTICAL
+    val sv = ScrollView(this)
+    val inner = LinearLayout(this)
+    inner.orientation = LinearLayout.VERTICAL
+    inner.setPadding(dp(20), dp(4), dp(20), dp(4))
+    inner.addView(content, lp(MATCH, WRAP))
+    sv.addView(inner)
+    body.addView(sv, lp(MATCH, dp(520)))
+    dlg()
+        .setTitle(title)
+        .setView(body)
         .setNegativeButton(L.t("Close", "বন্ধ করুন"), null)
         .show()
 }
