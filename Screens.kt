@@ -2114,7 +2114,7 @@ class SettingsScreen(private val a: MainActivity) {
     }
 
     fun build(): View {
-        val (sv, col) = a.page()
+        val (sv, col) = a.page(calmFling = true)
         col.addView(a.tv(L.t("Settings", "সেটিংস"), 24f, C.text, 1), lp(MATCH, WRAP, b = a.dp(14)))
 
         // language: card with two chips (বাংলা | English)
