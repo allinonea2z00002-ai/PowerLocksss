@@ -1190,11 +1190,7 @@ class StatsScreen(private val a: MainActivity) {
 
         // (ডায়াগনস্টিক — নিচের আইকন-কার্ড গ্রিডে; ট্যাপ করলে পুরো লগের উইন্ডো খোলে।)
 
-        // companions: pet Mimi stays here; tree & garden and story are in the icon-card grid below
-        col.addView(a.petCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // goals & play: lucky wheel, focus journey, mini-games
-        col.addView(a.wheelCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        // goals & play: focus journey, mini-games
         col.addView(a.journeyCard(), lp(MATCH, WRAP, b = a.dp(14)))
         col.addView(a.gamesCard(), lp(MATCH, WRAP, b = a.dp(14)))
 
