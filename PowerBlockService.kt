@@ -629,15 +629,17 @@ class PowerBlockService : AccessibilityService() {
     }
 
     /**
-     * "Uninstall" must sit on a real button the user can tap — a Button, or
-     * any clickable node carrying the word. Plain words on the screen are not
-     * enough: a chat message, a description or a web page mentioning
-     * "Uninstall" next to a protected app's name used to kick the user out of
-     * that app — even out of the Muse app itself. A real uninstall dialog,
-     * the App info page and the installer's confirmation all carry a genuine
-     * clickable Uninstall button, so the protection still fires there.
-     * No parent walk: a message bubble's container may itself be clickable,
-     * so only the matching node itself counts.
+     * "Uninstall" must sit on a real button the user can tap — a Button, a
+     * clickable node, or a TextView inside a clickable row/container (how
+     * Vivo draws its dialog buttons and long-press menu items). The node's
+     * text must be exactly "Uninstall" — a chat message that merely mentions
+     * the word has a much longer text and never matches, so plain words on
+     * the screen can no longer trigger the block (that used to kick the user
+     * out of the Muse app itself). The one-level parent walk is safe because
+     * of that exact-text gate: a message bubble may be clickable, but its
+     * text is never exactly "Uninstall". A real uninstall dialog, the App
+     * info page and the installer's confirmation all carry a genuine
+     * Uninstall button, so the protection still fires there.
      */
     private fun hasUninstallButton(root: AccessibilityNodeInfo): Boolean {
         for (word in listOf("Uninstall", "আনইনস্টল")) {
@@ -645,9 +647,25 @@ class PowerBlockService : AccessibilityService() {
             var found = false
             for (n in nodes) {
                 if (!found) {
-                    if (n.isClickable) found = true
-                    val cn = n.className?.toString()
-                    if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") found = true
+                    val text = n.text?.toString()?.trim()
+                    val exact = text != null && (
+                        text.equals("Uninstall", ignoreCase = true) ||
+                        text == "আনইনস্টল" || text == "আনইনস্টল করুন" || text == "আনইনস্টল করো"
+                    )
+                    if (exact) {
+                        if (n.isClickable) found = true
+                        val cn = n.className?.toString()
+                        if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") found = true
+                        // Vivo's dialog buttons and menu items are often a
+                        // TextView inside a clickable row — the parent counts.
+                        if (!found) {
+                            val p = n.parent
+                            if (p != null) {
+                                if (p.isClickable) found = true
+                                try { p.recycle() } catch (_: Exception) { }
+                            }
+                        }
+                    }
                 }
                 try { n.recycle() } catch (_: Exception) { }
             }
