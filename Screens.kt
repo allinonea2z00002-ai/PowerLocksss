@@ -1131,17 +1131,44 @@ class StatsScreen(private val a: MainActivity) {
         )
         col.addView(weekCard, lp(MATCH, WRAP, b = a.dp(14)))
 
-        // milestone badges: earned in colour with the date, unearned greyed out.
-        // Compact here — tap for the full badge grid in a separate window.
-        val earnedCount = Badges.earned(a).size
-        col.addView(
-            navCard(
-                L.t("Badges", "ব্যাজ"),
-                L.num(earnedCount.toString()) + " / " + L.num(Badges.ALL.size.toString()) +
-                    L.t(" badges earned", "টি ব্যাজ পেয়েছেন")
-            ) { a.showSectionDialog(L.t("Badges", "ব্যাজ"), buildBadgesBody()) },
-            lp(MATCH, WRAP, b = a.dp(14))
-        )
+        // milestone badges: earned in colour with the date, unearned greyed out
+        val badgeCard = a.card()
+        badgeCard.addView(a.section(L.t("Badges", "ব্যাজ")))
+        val earned = Badges.earned(a)
+        val badgeDefs = Badges.ALL
+        for (rowIdx in badgeDefs.indices step 2) {
+            val row = LinearLayout(a)
+            row.orientation = LinearLayout.HORIZONTAL
+            for (j in 0 until 2) {
+                val def = badgeDefs.getOrNull(rowIdx + j)
+                val cell = LinearLayout(a)
+                cell.orientation = LinearLayout.VERTICAL
+                cell.gravity = Gravity.CENTER_HORIZONTAL
+                cell.background = rounded(C.card2, a.dp(14).toFloat())
+                cell.setPadding(a.dp(10), a.dp(12), a.dp(10), a.dp(12))
+                if (def != null) {
+                    val whenMs = earned[def.id]
+                    val got = whenMs != null
+                    cell.alpha = if (got) 1f else 0.45f
+                    cell.addView(IconView(a, def.icon, if (got) C.mint else C.muted), lp(a.dp(30), a.dp(30)))
+                    val t = a.tv(L.t(def.titleEn, def.titleBn), 13f, if (got) C.text else C.muted, 1)
+                    t.gravity = Gravity.CENTER
+                    cell.addView(t, lp(MATCH, WRAP, t = a.dp(6)))
+                    val d = a.tv(L.t(def.descEn, def.descBn), 11f, C.muted)
+                    d.gravity = Gravity.CENTER
+                    cell.addView(d, lp(MATCH, WRAP, t = a.dp(2)))
+                    val s = a.tv(
+                        if (got) fmtDate(whenMs ?: 0L) else L.t("Not earned yet", "এখনো পাননি"),
+                        11f, if (got) C.primary else C.muted, 1
+                    )
+                    s.gravity = Gravity.CENTER
+                    cell.addView(s, lp(MATCH, WRAP, t = a.dp(4)))
+                }
+                row.addView(cell, lp(0, MATCH, r = if (j == 0) a.dp(10) else 0, t = a.dp(10), weight = 1f))
+            }
+            badgeCard.addView(row)
+        }
+        col.addView(badgeCard, lp(MATCH, WRAP, b = a.dp(14)))
 
         // lock calendar: a dot on every day a lock was completed
         val calCard = a.card()
@@ -1189,182 +1216,15 @@ class StatsScreen(private val a: MainActivity) {
 
         // today's app usage (all apps, tracked by the accessibility service):
         // most-used first. Tapping a row opens its daily-limit setting.
-        // Compact here — tap for the full list in a separate window.
-        // The body is rebuilt by tick() so the numbers move live while open.
-        val usageToday = Extra.usageTodayAll(a)
-        val usageTodayTotal = usageToday.values.sum()
-        col.addView(
-            navCard(
-                L.t("App usage today", "আজকের অ্যাপ ব্যবহার"),
-                L.t("Total: ", "মোট: ") + fmtDur(usageTodayTotal * 1000L) + " · " +
-                    L.num(usageToday.size.toString()) + L.t(" apps", "টি অ্যাপ")
-            ) {
-                usageCard = a.card()
-                buildUsageCardBody()
-                a.showSectionDialog(L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), usageCard)
-            },
-            lp(MATCH, WRAP, b = a.dp(14))
-        )
+        // The body is rebuilt by tick() so the numbers move live.
+        usageCard = a.card()
+        buildUsageCardBody()
+        col.addView(usageCard, lp(MATCH, WRAP, b = a.dp(14)))
 
         // per-day usage log (30 days of history): pick a day, see per-app
-        // minutes that day. Compact here — tap for the full log in a separate window.
-        col.addView(
-            navCard(
-                L.t("Usage log", "ব্যবহারের লগ"),
-                L.t("Today total: ", "আজ মোট: ") + fmtDur(Extra.usageDayTotal(a, Store.dayKey(0)) * 1000L)
-            ) { a.showSectionDialog(L.t("Usage log", "ব্যবহারের লগ"), buildUsageLogCard()) },
-            lp(MATCH, WRAP, b = a.dp(14))
-        )
-
-        // temptation counter: blocked attempts (today / 7 days / total + per kind)
-        col.addView(a.attemptsCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // diagnostics: why each block fired, and what matched
-        col.addView(a.diagCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // companions: focus tree + garden + animals, pet Mimi, story.
-        // Tree & garden and the story are compact here — tap for the full
-        // view in a separate window.
-        val treeFs = Store.focusStats(a)
-        val treeStage = FocusTree.stageFor(treeFs.totalMin)
-        val gardenCount = Garden.sync(a).size
-        col.addView(
-            navCard(
-                L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"),
-                L.t(treeStage.nameEn, treeStage.nameBn) + " · " +
-                    L.num(gardenCount.toString()) + L.t(" plants in the garden", "টি গাছ বাগানে")
-            ) { a.showSectionDialog(L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), a.treeGardenCard()) },
-            lp(MATCH, WRAP, b = a.dp(14))
-        )
-        col.addView(a.petCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        val storyUnlocked = Story.unlockedCount(a)
-        val storyRead = Story.readIds(a).size
-        col.addView(
-            navCard(
-                L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"),
-                L.num(storyUnlocked.toString()) + " / " + L.num(Story.TOTAL.toString()) +
-                    L.t(" chapters unlocked · ", " অধ্যায় খোলা · ") +
-                    L.num(storyRead.toString()) + L.t(" read", "টি পড়া")
-            ) { a.showSectionDialog(L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), a.storyCard()) },
-            lp(MATCH, WRAP, b = a.dp(14))
-        )
-
-        // goals & play: lucky wheel, focus journey, mini-games
-        col.addView(a.wheelCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.journeyCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.gamesCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // record board: best-ever numbers, computed live from stored history
-        recordCard = a.card()
-        buildRecordBoardBody()
-        col.addView(recordCard, lp(MATCH, WRAP, b = a.dp(14)))
-
-        // history: compact here — tap for the full session list in a separate window
-        col.addView(
-            navCard(
-                L.t("Session history", "সেশন ইতিহাস"),
-                L.num(all.size.toString()) + L.t(" sessions · ", "টি সেশন · ") +
-                    L.num(completed.toString()) + L.t(" completed", "টি সম্পন্ন")
-            ) { a.showSectionDialog(L.t("Session history", "সেশন ইতিহাস"), buildHistoryBody(all)) },
-            lp(MATCH, WRAP, b = a.dp(14))
-        )
-        return sv
-    }
-
-    /** Compact section card: title + one-line summary + chevron. Tapping it
-     * opens the section's full content in a separate window. */
-    private fun navCard(title: String, summary: String, onOpen: () -> Unit): View {
-        val c = a.card()
-        val r = LinearLayout(a)
-        r.gravity = Gravity.CENTER_VERTICAL
-        val col = LinearLayout(a)
-        col.orientation = LinearLayout.VERTICAL
-        col.addView(a.tv(title, 16f, C.text, 1))
-        col.addView(a.tv(summary, 12f, C.muted), lp(MATCH, WRAP, t = a.dp(2)))
-        r.addView(col, lp(0, WRAP, weight = 1f))
-        r.addView(a.tv("›", 22f, C.primary, 1))
-        c.addView(r)
-        c.pressFeedback()
-        c.setOnClickListener { onOpen() }
-        return c
-    }
-
-    /** Badge grid body (for the Badges window): earned in colour with the date, unearned greyed out. */
-    private fun buildBadgesBody(): View {
-        val body = LinearLayout(a)
-        body.orientation = LinearLayout.VERTICAL
-        val earned = Badges.earned(a)
-        val badgeDefs = Badges.ALL
-        for (rowIdx in badgeDefs.indices step 2) {
-            val row = LinearLayout(a)
-            row.orientation = LinearLayout.HORIZONTAL
-            for (j in 0 until 2) {
-                val def = badgeDefs.getOrNull(rowIdx + j)
-                val cell = LinearLayout(a)
-                cell.orientation = LinearLayout.VERTICAL
-                cell.gravity = Gravity.CENTER_HORIZONTAL
-                cell.background = rounded(C.card2, a.dp(14).toFloat())
-                cell.setPadding(a.dp(10), a.dp(12), a.dp(10), a.dp(12))
-                if (def != null) {
-                    val whenMs = earned[def.id]
-                    val got = whenMs != null
-                    cell.alpha = if (got) 1f else 0.45f
-                    cell.addView(IconView(a, def.icon, if (got) C.mint else C.muted), lp(a.dp(30), a.dp(30)))
-                    val t = a.tv(L.t(def.titleEn, def.titleBn), 13f, if (got) C.text else C.muted, 1)
-                    t.gravity = Gravity.CENTER
-                    cell.addView(t, lp(MATCH, WRAP, t = a.dp(6)))
-                    val d = a.tv(L.t(def.descEn, def.descBn), 11f, C.muted)
-                    d.gravity = Gravity.CENTER
-                    cell.addView(d, lp(MATCH, WRAP, t = a.dp(2)))
-                    val s = a.tv(
-                        if (got) fmtDate(whenMs ?: 0L) else L.t("Not earned yet", "এখনো পাননি"),
-                        11f, if (got) C.primary else C.muted, 1
-                    )
-                    s.gravity = Gravity.CENTER
-                    cell.addView(s, lp(MATCH, WRAP, t = a.dp(4)))
-                }
-                row.addView(cell, lp(0, MATCH, r = if (j == 0) a.dp(10) else 0, t = a.dp(10), weight = 1f))
-            }
-            body.addView(row)
-        }
-        return body
-    }
-
-    /** Session history body (for the Session history window): last 30 sessions, newest first. */
-    private fun buildHistoryBody(sessions: List<Session>): View {
-        val body = LinearLayout(a)
-        body.orientation = LinearLayout.VERTICAL
-        if (sessions.isEmpty()) {
-            val e = a.tv(L.t("No sessions yet", "এখনো কোনো সেশন নেই"), 14f, C.muted)
-            e.gravity = Gravity.CENTER
-            body.addView(e, lp(MATCH, WRAP, t = a.dp(16), b = a.dp(8)))
-        } else {
-            for (s in sessions.reversed().take(30)) {
-                val r = LinearLayout(a)
-                r.gravity = Gravity.CENTER_VERTICAL
-                r.setPadding(0, a.dp(10), 0, a.dp(10))
-                val left = LinearLayout(a)
-                left.orientation = LinearLayout.VERTICAL
-                left.addView(a.tv(fmtDate(s.start) + " · " + fmtClock(s.start), 14f, C.text, 1))
-                val src = when (s.src) {
-                    "schedule" -> L.t("Scheduled", "সময়সূচি")
-                    "routine" -> L.t("Routine", "রুটিন")
-                    "pomodoro" -> "Pomodoro"
-                    else -> L.t("Manual", "ম্যানুয়াল")
-                }
-                val state = if (s.ok) L.t("Completed", "সম্পন্ন") else L.t("Stopped early", "আগেই বন্ধ")
-                left.addView(a.tv("$src · $state", 12f, C.muted))
-                r.addView(left, lp(0, WRAP, weight = 1f))
-                r.addView(a.tv(fmtDur(s.dur), 15f, if (s.ok) C.mint else C.warn, 1))
-                body.addView(r)
-            }
-        }
-        return body
-    }
-
-    /** Usage log card (for the Usage log window): day navigation + per-app minutes that day. */
-    private fun buildUsageLogCard(): View {
+        // minutes that day
         val logCard = a.card()
+        logCard.addView(a.section(L.t("Usage log", "ব্যবহারের লগ")))
         val logNav = LinearLayout(a)
         logNav.gravity = Gravity.CENTER_VERTICAL
         val logPrev = a.tv("‹", 28f, C.primary, 1)
@@ -1392,8 +1252,60 @@ class StatsScreen(private val a: MainActivity) {
         usageLogBody = LinearLayout(a)
         usageLogBody.orientation = LinearLayout.VERTICAL
         logCard.addView(usageLogBody, lp(MATCH, WRAP, t = a.dp(4)))
+        col.addView(logCard, lp(MATCH, WRAP, b = a.dp(14)))
         buildUsageLogBody()
-        return logCard
+
+        // temptation counter: blocked attempts (today / 7 days / total + per kind)
+        col.addView(a.attemptsCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // diagnostics: why each block fired, and what matched
+        col.addView(a.diagCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // companions: focus tree + garden + animals, pet Mimi, story
+        col.addView(a.treeGardenCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        col.addView(a.petCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        col.addView(a.storyCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // goals & play: lucky wheel, focus journey, mini-games
+        col.addView(a.wheelCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        col.addView(a.journeyCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        col.addView(a.gamesCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
+        // record board: best-ever numbers, computed live from stored history
+        recordCard = a.card()
+        buildRecordBoardBody()
+        col.addView(recordCard, lp(MATCH, WRAP, b = a.dp(14)))
+
+        // history
+        val hist = a.card()
+        hist.addView(a.section(L.t("Session history", "সেশন ইতিহাস")))
+        if (all.isEmpty()) {
+            val e = a.tv(L.t("No sessions yet", "এখনো কোনো সেশন নেই"), 14f, C.muted)
+            e.gravity = Gravity.CENTER
+            hist.addView(e, lp(MATCH, WRAP, t = a.dp(16), b = a.dp(8)))
+        } else {
+            for (s in all.reversed().take(30)) {
+                val r = LinearLayout(a)
+                r.gravity = Gravity.CENTER_VERTICAL
+                r.setPadding(0, a.dp(10), 0, a.dp(10))
+                val left = LinearLayout(a)
+                left.orientation = LinearLayout.VERTICAL
+                left.addView(a.tv(fmtDate(s.start) + " · " + fmtClock(s.start), 14f, C.text, 1))
+                val src = when (s.src) {
+                    "schedule" -> L.t("Scheduled", "সময়সূচি")
+                    "routine" -> L.t("Routine", "রুটিন")
+                    "pomodoro" -> "Pomodoro"
+                    else -> L.t("Manual", "ম্যানুয়াল")
+                }
+                val state = if (s.ok) L.t("Completed", "সম্পন্ন") else L.t("Stopped early", "আগেই বন্ধ")
+                left.addView(a.tv("$src · $state", 12f, C.muted))
+                r.addView(left, lp(0, WRAP, weight = 1f))
+                r.addView(a.tv(fmtDur(s.dur), 15f, if (s.ok) C.mint else C.warn, 1))
+                hist.addView(r)
+            }
+        }
+        col.addView(hist)
+        return sv
     }
 
     /** Live tick from the MainActivity ticker (throttled to every 5 s): rebuilds
@@ -1403,9 +1315,8 @@ class StatsScreen(private val a: MainActivity) {
         if (now - lastStatsTick < 5000) return
         lastStatsTick = now
         try {
-            // the usage card/log only exist once their window has been opened;
-            // the score and record board still refresh on their own
-            if (::usageCard.isInitialized) buildUsageCardBody()
+            if (!::usageCard.isInitialized) return
+            buildUsageCardBody()
             if (usageLogOffset == 0) buildUsageLogBody() // only today's log moves
             refreshFocusScore()
             buildRecordBoardBody()
@@ -1419,8 +1330,7 @@ class StatsScreen(private val a: MainActivity) {
      * setting. Rebuilt on every live tick so the numbers move. */
     private fun buildUsageCardBody() {
         usageCard.removeAllViews()
-        // no section header here: this card only shows inside its window,
-        // whose title already says "App usage today"
+        usageCard.addView(a.section(L.t("App usage today", "আজকের অ্যাপ ব্যবহার")))
         val usageToday = Extra.usageTodayAll(a)
         val usage7 = Extra.usage7DayTotal(a)
         if (usageToday.isEmpty()) {
@@ -1489,9 +1399,6 @@ class StatsScreen(private val a: MainActivity) {
     /** (Re)builds the per-day usage log for [usageLogOffset] days ago:
      * every app's minutes that day, most-used first, plus the day total. */
     private fun buildUsageLogBody() {
-        // the log card is only built when its window opens; until then the
-        // label/body are not initialised (tick() calls this too)
-        if (!::usageLogBody.isInitialized || !::usageLogLabel.isInitialized) return
         usageLogLabel.text = when (usageLogOffset) {
             0 -> L.t("Today", "আজ")
             1 -> L.t("Yesterday", "গতকাল")
