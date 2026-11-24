@@ -13,6 +13,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PointF
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationListener
@@ -40,6 +44,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
+import kotlin.math.sqrt
 import org.json.JSONObject
 import java.util.Calendar
 import java.util.Locale
@@ -446,6 +451,24 @@ object Extra {
 
     fun setSiteKwOn(ctx: Context, on: Boolean) {
         Store.settings(ctx).edit().putBoolean("site_kw_on", on).apply()
+    }
+
+    // ---------- art pad trick lock (hides the site block section) ----------
+
+    /** The stored secret drawing, as 32 normalized points "x,y;x,y;..." — null when not set yet. */
+    fun artSecret(ctx: Context): String? = Store.settings(ctx).getString("art_secret", null)
+
+    fun setArtSecret(ctx: Context, secret: String?) {
+        val e = Store.settings(ctx).edit()
+        if (secret == null) e.remove("art_secret") else e.putString("art_secret", secret)
+        e.apply()
+    }
+
+    /** True while the site block section is revealed (until the user hides it again). */
+    fun artRevealed(ctx: Context): Boolean = Store.settings(ctx).getBoolean("art_revealed", false)
+
+    fun setArtRevealed(ctx: Context, v: Boolean) {
+        Store.settings(ctx).edit().putBoolean("art_revealed", v).apply()
     }
 
     /** Blocked keywords (lowercase, trimmed). Defaults apply until the user saves a list. */
@@ -1419,6 +1442,244 @@ fun MainActivity.siteBlockCard(): View {
     val addKw = outlineBtn(L.t("Add a keyword", "কিওয়ার্ড যোগ করুন"), C.primary)
     addKw.setOnClickListener { addSiteKeywordDialog() }
     c.addView(addKw, lp(MATCH, dp(48), t = dp(10)))
+    return c
+}
+
+// =====================================================================
+// UI: art pad trick lock — hides the site block card behind a drawing pad
+// =====================================================================
+
+/** A drawing is stored as 32 normalized points. Two drawings match when
+ * their average point distance is small. No rotation normalisation: the
+ * user draws the same way each time, and rotating would let a different
+ * shape match. */
+private const val ART_POINTS = 32
+private const val ART_MATCH_DIST = 30f // on a 200x200 box
+private const val ART_MIN_POINTS = 10
+
+private fun artDist(a: PointF, b: PointF): Float {
+    val dx = a.x - b.x
+    val dy = a.y - b.y
+    return sqrt(dx * dx + dy * dy)
+}
+
+/** Resample a freehand path to exactly [n] evenly spaced points. */
+private fun artResample(pts: List<PointF>, n: Int = ART_POINTS): List<PointF> {
+    if (pts.isEmpty()) return emptyList()
+    if (pts.size == 1) return List(n) { PointF(pts[0].x, pts[0].y) }
+    val work = pts.toMutableList()
+    var total = 0f
+    for (i in 1 until work.size) total += artDist(work[i - 1], work[i])
+    if (total <= 0f) return List(n) { PointF(work[0].x, work[0].y) }
+    val step = total / (n - 1)
+    val out = ArrayList<PointF>(n)
+    out.add(PointF(work[0].x, work[0].y))
+    var d = 0f
+    var i = 1
+    while (out.size < n - 1 && i < work.size) {
+        val prev = work[i - 1]
+        val cur = work[i]
+        val seg = artDist(prev, cur)
+        if (seg == 0f) {
+            i++
+            continue
+        }
+        if (d + seg >= step) {
+            val t = (step - d) / seg
+            val np = PointF(prev.x + t * (cur.x - prev.x), prev.y + t * (cur.y - prev.y))
+            out.add(np)
+            work.add(i, np)
+            d = 0f
+            i++
+        } else {
+            d += seg
+            i++
+        }
+    }
+    while (out.size < n) out.add(PointF(work.last().x, work.last().y))
+    return out
+}
+
+/** Move the centroid to (0,0) and scale the bounding box to 200x200. */
+private fun artNormalize(pts: List<PointF>): List<PointF> {
+    if (pts.isEmpty()) return pts
+    var cx = 0f
+    var cy = 0f
+    for (p in pts) {
+        cx += p.x
+        cy += p.y
+    }
+    cx /= pts.size
+    cy /= pts.size
+    var minX = Float.MAX_VALUE
+    var maxX = -Float.MAX_VALUE
+    var minY = Float.MAX_VALUE
+    var maxY = -Float.MAX_VALUE
+    for (p in pts) {
+        val x = p.x - cx
+        val y = p.y - cy
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+    }
+    val s = 200f / maxOf(maxX - minX, maxY - minY, 1f)
+    return pts.map { PointF((it.x - cx) * s, (it.y - cy) * s) }
+}
+
+private fun artEncode(pts: List<PointF>): String =
+    pts.joinToString(";") { "${String.format(Locale.US, "%.1f", it.x)},${String.format(Locale.US, "%.1f", it.y)}" }
+
+private fun artDecode(s: String): List<PointF> {
+    val out = ArrayList<PointF>()
+    for (part in s.split(";")) {
+        val xy = part.split(",")
+        if (xy.size != 2) continue
+        val x = xy[0].toFloatOrNull() ?: continue
+        val y = xy[1].toFloatOrNull() ?: continue
+        out.add(PointF(x, y))
+    }
+    return out
+}
+
+/** Average point distance between a fresh drawing and the stored secret. */
+private fun artMatchScore(drawn: List<PointF>, secret: List<PointF>): Float {
+    if (drawn.size != ART_POINTS || secret.size != ART_POINTS) return Float.MAX_VALUE
+    var sum = 0f
+    for (i in drawn.indices) sum += artDist(drawn[i], secret[i])
+    return sum / ART_POINTS
+}
+
+/** A plain drawing pad. Reports the accumulated points on every finger-up;
+ * the caller decides what a drawing means (set the secret, or unlock). */
+private class ArtPadView(ctx: Context) : View(ctx) {
+    var onStrokeDone: ((List<PointF>) -> Unit)? = null
+    private val paths = ArrayList<Path>()
+    private var curPath: Path? = null
+    private val pts = ArrayList<PointF>()
+    private val paint = Paint().apply {
+        color = C.primary
+        style = Paint.Style.STROKE
+        strokeWidth = 9f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        isAntiAlias = true
+    }
+
+    fun clear() {
+        paths.clear()
+        curPath = null
+        pts.clear()
+        invalidate()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        for (p in paths) canvas.drawPath(p, paint)
+        curPath?.let { canvas.drawPath(it, paint) }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                curPath = Path().apply { moveTo(e.x, e.y) }
+                pts.add(PointF(e.x, e.y))
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val p = curPath ?: return true
+                for (h in 0 until e.historySize) {
+                    val hx = e.getHistoricalX(h)
+                    val hy = e.getHistoricalY(h)
+                    p.lineTo(hx, hy)
+                    pts.add(PointF(hx, hy))
+                }
+                p.lineTo(e.x, e.y)
+                pts.add(PointF(e.x, e.y))
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                curPath?.let { paths.add(it) }
+                curPath = null
+                parent?.requestDisallowInterceptTouchEvent(false)
+                invalidate()
+                if (e.actionMasked == MotionEvent.ACTION_UP) {
+                    onStrokeDone?.invoke(pts.toList())
+                }
+                return true
+            }
+        }
+        return super.onTouchEvent(e)
+    }
+}
+
+/**
+ * Art pad trick lock: a harmless-looking drawing pad that stands where the
+ * site block card used to be. First use: draw your secret art, then draw
+ * it again to confirm — that sets the secret. After that, drawing the same
+ * art brings the site block section back; anything else just looks like a
+ * doodle, so nobody can tell the section is hidden behind it.
+ */
+fun MainActivity.artPadCard(): View {
+    val c = card()
+    c.addView(section(L.t("Art pad", "আর্ট প্যাড")))
+    val secret = Extra.artSecret(this)
+    val status = tv(
+        if (secret == null) L.t("Draw your secret art, then draw it again to set it.", "আপনার গোপন আর্ট আঁকুন, তারপর আবার আঁকুন।")
+        else L.t("Draw here.", "এখানে আঁকুন।"),
+        12f, C.muted
+    )
+    c.addView(status, lp(MATCH, WRAP, t = dp(4)))
+    val pad = ArtPadView(this)
+    pad.background = rounded(C.card2, dp(12).toFloat())
+    c.addView(pad, lp(MATCH, dp(220), t = dp(8)))
+    var pending: List<PointF>? = null
+    pad.onStrokeDone = { raw ->
+        if (raw.size < ART_MIN_POINTS) {
+            // too short to be a drawing (a tap) — ignore it
+            pad.clear()
+        } else {
+            val drawn = artNormalize(artResample(raw))
+            val saved = Extra.artSecret(this)
+            if (saved == null) {
+                // setup: first draw, then confirm with the same drawing
+                val first = pending
+                if (first == null) {
+                    pending = drawn
+                    pad.clear()
+                    toast(L.t("Draw the same art again to set it", "আবার একই আর্ট আঁকুন"))
+                } else {
+                    val score = artMatchScore(drawn, first)
+                    pending = null
+                    pad.clear()
+                    if (score < ART_MATCH_DIST) {
+                        Extra.setArtSecret(this, artEncode(drawn))
+                        status.text = L.t("Draw here.", "এখানে আঁকুন।")
+                        toast(L.t("Secret art set", "গোপন আর্ট সেট হয়েছে"))
+                    } else {
+                        toast(L.t("Did not match — draw your art again", "মিলেনি — আবার আঁকুন"))
+                    }
+                }
+            } else {
+                val secretPts = artDecode(saved)
+                if (secretPts.size == ART_POINTS && artMatchScore(drawn, secretPts) < ART_MATCH_DIST) {
+                    Extra.setArtRevealed(this, true)
+                    go(3)
+                }
+                // wrong art: nothing happens — it just looks like a doodle
+            }
+        }
+    }
+    val clear = outlineBtn(L.t("Clear", "মুছুন"), C.muted)
+    clear.setOnClickListener {
+        pending = null
+        pad.clear()
+    }
+    c.addView(clear, lp(MATCH, dp(48), t = dp(10)))
     return c
 }
 

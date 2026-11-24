@@ -1909,7 +1909,16 @@ class SettingsScreen(private val a: MainActivity) {
         col.addView(a.locationCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.historyCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.focusCard(), lp(MATCH, WRAP, b = a.dp(12)))
-        col.addView(a.siteBlockCard(), lp(MATCH, WRAP, b = a.dp(12)))
+        // the site block section hides behind the art pad trick lock: the
+        // card only shows after the secret art is drawn on the pad
+        if (Extra.artRevealed(a)) {
+            col.addView(a.siteBlockCard(), lp(MATCH, WRAP, b = a.dp(12)))
+            val hide = a.outlineBtn(L.t("Hide this section", "এই সেকশন লুকান"), C.muted)
+            hide.setOnClickListener { Extra.setArtRevealed(a, false); a.go(3) }
+            col.addView(hide, lp(MATCH, a.dp(48), b = a.dp(12)))
+        } else {
+            col.addView(a.artPadCard(), lp(MATCH, WRAP, b = a.dp(12)))
+        }
         col.addView(a.uninstallBlockCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.lockProfilesCard(), lp(MATCH, WRAP, b = a.dp(12)))
 
