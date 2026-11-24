@@ -637,14 +637,15 @@ class PowerBlockService : AccessibilityService() {
      * to be instant because uninstall is the sensitive one. Note this also
      * sends Home from a protected app's App info page, since that page
      * carries the same "Uninstall" button — that is part of the protection.
+     * Runs for ANY foreground package: on Vivo the long-press uninstall sheet
+     * comes from the launcher itself, not the installer, so a guarded-package
+     * check never sees it.
      */
     private fun onUninstallAttempt(e: AccessibilityEvent) {
         val type = e.eventType
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) return
-        val pkg = e.packageName?.toString() ?: return
-        if (!isGuarded(pkg)) return
         val now = SystemClock.uptimeMillis()
         if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 200) return
         lastUninstallScan = now
