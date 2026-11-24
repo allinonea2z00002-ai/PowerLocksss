@@ -170,6 +170,9 @@ class PowerBlockService : AccessibilityService() {
     private var lastBrowserScanAt = 0L
     private var lastTypedScanAt = 0L // throttles the non-browser typed-field scan (once per 2 s)
     private var lastVisibleTextScan = 0L // throttles the full visible-text keyword scan (once per 2 s)
+    private var lastVisibleBlockKey = "" // dedup: the same screen text must not re-block after dismiss
+    private var launcherPkg: String? = null
+    private var launcherResolved = false
     private var lastUrlCheckAt = 0L
     private var lastCheckedUrl = ""
     private var lastSiteOverlayAt = 0L
@@ -416,6 +419,7 @@ class PowerBlockService : AccessibilityService() {
             // a new lock: re-discover the browsers on this phone first
             // (a browser installed since the service started must be
             // covered too), then scan the foreground window at once
+            lastVisibleBlockKey = "" // a new lock blocks a screen again, even one blocked before
             refreshBrowsers()
             if (siteUrlOn || siteKwOn) {
                 handler.post { scanBrowserNow() }
@@ -1357,6 +1361,7 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastVisibleTextScan < 2000) return
         lastVisibleTextScan = now
         if (isBlockOverlayAttached()) return
+        if (isLauncherPkg(pkg)) return
         try {
             val root = rootInActiveWindow ?: return
             try {
@@ -1365,12 +1370,20 @@ class PowerBlockService : AccessibilityService() {
                 val sb = StringBuilder()
                 collectVisibleText(root, sb)
                 if (sb.isEmpty()) return
+                val text = sb.toString()
                 val kw = try {
-                    KeywordBlock.findMatch(applicationContext, sb.toString(), Extra.siteKeywords(applicationContext))
+                    KeywordBlock.findMatch(applicationContext, text, Extra.siteKeywords(applicationContext))
                 } catch (ex: Exception) {
                     Log.e(TAG, "visible text keyword match failed", ex)
                     return
                 } ?: return
+                // Same app, same keyword, same screen text: already blocked
+                // once — dismissing must not loop back into the same block.
+                // A new lock resets the key (see readState), and any change
+                // in the text (scrolling, new content) makes a new key.
+                val key = "$pkg|$kw|${text.hashCode()}"
+                if (key == lastVisibleBlockKey) return
+                lastVisibleBlockKey = key
                 if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true)
             } finally {
                 try { root.recycle() } catch (_: Exception) { }
@@ -1378,6 +1391,23 @@ class PowerBlockService : AccessibilityService() {
         } catch (ex: Exception) {
             Log.e(TAG, "visible text keyword scan failed", ex)
         }
+    }
+
+    /** The default launcher (home screen): visible-text keywords are never
+     * scanned there — its labels are static, and it is where the block
+     * screen itself sends the user, so scanning it could only re-block
+     * the same screen forever. Resolved once and cached. */
+    private fun isLauncherPkg(pkg: String): Boolean {
+        if (!launcherResolved) {
+            launcherResolved = true
+            launcherPkg = try {
+                val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                @Suppress("DEPRECATION")
+                val info = packageManager.resolveActivity(intent, 0)
+                info?.activityInfo?.packageName
+            } catch (_: Exception) { null }
+        }
+        return launcherPkg != null && pkg == launcherPkg
     }
 
     private fun collectVisibleText(root: AccessibilityNodeInfo, sb: StringBuilder) {
