@@ -1029,95 +1029,6 @@ class StatsScreen(private val a: MainActivity) {
             statCard(Ic.SHIELD, L.t("Longest session", "সবচেয়ে বড় সেশন"), fmtDur(longest))
         )
 
-        // focus score today (0–100): focus minutes vs goal + blocks resisted + streak
-        val scoreCard = a.card()
-        scoreCard.addView(a.section(L.t("Focus score today", "আজকের ফোকাস স্কোর")))
-        focusScoreValue = a.tv("", 34f, C.mint, 1)
-        scoreCard.addView(focusScoreValue, lp(MATCH, WRAP, t = a.dp(8)))
-        focusScoreDetail = a.tv("", 13f, C.muted)
-        scoreCard.addView(focusScoreDetail, lp(MATCH, WRAP, t = a.dp(4)))
-        col.addView(scoreCard, lp(MATCH, WRAP, b = a.dp(14)))
-        refreshFocusScore()
-
-        // share: today's focus as an image card
-        val shareBtn = a.primaryBtn(L.t("Share my focus card", "আমার ফোকাস কার্ড শেয়ার করুন"))
-        shareBtn.setOnClickListener { FocusCardShare.share(a) }
-        col.addView(shareBtn, lp(MATCH, a.dp(52), b = a.dp(14)))
-
-        // chart
-        val chartCard = a.card()
-        chartCard.addView(a.section(L.t("Last 7 days", "গত ৭ দিন")))
-        val chart = BarChartView(a)
-        val vals = ArrayList<Long>()
-        val labs = ArrayList<String>()
-        for (off in -6..0) {
-            val from = Store.dayStart(now, off)
-            val to = Store.dayStart(now, off + 1)
-            vals.add(Store.sumRange(all, from, to))
-            val c = Calendar.getInstance()
-            c.timeInMillis = from
-            labs.add(L.dayLong(dayIdx(c)))
-        }
-        chart.values = vals
-        chart.labels = labs
-        chartCard.addView(chart, lp(MATCH, a.dp(150), t = a.dp(12)))
-        col.addView(chartCard, lp(MATCH, WRAP, t = a.dp(4), b = a.dp(14)))
-
-        // (ফোকাস — গত ৭ দিন, ব্যাজ, লক ক্যালেন্ডার, অ্যাপ ব্যবহার, ব্যবহারের লগ,
-        // ডায়াগনস্টিক, গাছ ও বাগান, গল্প, রেকর্ড বোর্ড, সেশন ইতিহাস — নিচের
-        // আইকন-কার্ড গ্রিডে; ট্যাপ করলে আলাদা উইন্ডোতে খোলে।)
-
-        // weekly comparison: this week (last 7 days) vs the week before it,
-        // from the stored session + attempts history
-        val weekCard = a.card()
-        weekCard.addView(a.section(L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ")))
-        val thisFrom = Store.dayStart(now, -6)
-        val lastFrom = Store.dayStart(now, -13)
-        val thisFocus = Store.sumRange(all, thisFrom, end)
-        val lastFocus = Store.sumRange(all, lastFrom, thisFrom)
-        val thisSessions = all.count { it.ok && it.start >= thisFrom }
-        val lastSessions = all.count { it.ok && it.start >= lastFrom && it.start < thisFrom }
-        val attemptsList = Extra.attempts(a)
-        val thisBlocks = attemptsList.count { it.first >= thisFrom }
-        val lastBlocks = attemptsList.count { it.first >= lastFrom && it.first < thisFrom }
-        fun weekRow(label: String, thisVal: String, lastVal: String, thisN: Long, lastN: Long) {
-            val r = LinearLayout(a)
-            r.gravity = Gravity.CENTER_VERTICAL
-            r.setPadding(0, a.dp(8), 0, a.dp(2))
-            r.addView(a.tv(label, 14f, C.text, 1), lp(0, WRAP, weight = 1f))
-            r.addView(a.tv(thisVal, 15f, C.text, 1))
-            val arrow = when {
-                thisN > lastN -> "▲"
-                thisN < lastN -> "▼"
-                else -> "—"
-            }
-            val arrowColor = when {
-                thisN > lastN -> C.mint
-                thisN < lastN -> C.danger
-                else -> C.muted
-            }
-            val arrowTv = a.tv(arrow, 14f, arrowColor, 1)
-            arrowTv.setPadding(a.dp(8), 0, 0, 0)
-            r.addView(arrowTv)
-            weekCard.addView(r)
-            weekCard.addView(
-                a.tv(L.t("Last week: ", "গত সপ্তাহ: ") + lastVal, 12f, C.muted),
-                lp(MATCH, WRAP, b = a.dp(4))
-            )
-        }
-        weekRow(L.t("Focus time", "ফোকাস সময়"), fmtDur(thisFocus), fmtDur(lastFocus), thisFocus, lastFocus)
-        weekRow(
-            L.t("Completed locks", "সম্পন্ন লক"),
-            L.num(thisSessions.toString()), L.num(lastSessions.toString()),
-            thisSessions.toLong(), lastSessions.toLong()
-        )
-        weekRow(
-            L.t("Blocks resisted", "প্রতিহত ব্লক"),
-            L.num(thisBlocks.toString()), L.num(lastBlocks.toString()),
-            thisBlocks.toLong(), lastBlocks.toLong()
-        )
-        col.addView(weekCard, lp(MATCH, WRAP, b = a.dp(14)))
-
         // সব লম্বা সেকশন — কুইক অ্যাকশনের মতো আইকন কার্ডের গ্রিড (২ কলাম)।
         // প্রতিটি কার্ডে ট্যাপ করলে সেকশনের পুরো কনটেন্ট আলাদা উইন্ডোতে খোলে।
         val blue = Color.parseColor("#6AA5FF")
@@ -1176,6 +1087,46 @@ class StatsScreen(private val a: MainActivity) {
                 a.showDiagDialog()
             }
         )
+        // নতুন আইকন কার্ডগুলোর সারাংশের মান (ফোকাস স্কোর, চার্টের সেরা দিন,
+        // এই সপ্তাহের ফোকাস, যাত্রার কিমি)।
+        val scoreToday = Extra.focusScore(a)
+        val thisWeekFocus = Store.sumRange(all, Store.dayStart(now, -6), end)
+        var bestDayVal = 0L
+        var bestDayLab = L.dayLong(dayIdx(Calendar.getInstance()))
+        for (off in -6..0) {
+            val from = Store.dayStart(now, off)
+            val to = Store.dayStart(now, off + 1)
+            val v = Store.sumRange(all, from, to)
+            if (v > bestDayVal) {
+                bestDayVal = v
+                val cal = Calendar.getInstance()
+                cal.timeInMillis = from
+                bestDayLab = L.dayLong(dayIdx(cal))
+            }
+        }
+        val journeyKm = Journey.totalKm(a)
+        pair(
+            iconCard(Ic.CHECK, C.mint, L.t("Focus score today", "আজকের ফোকাস স্কোর"), L.num(scoreToday.score.toString()) + " / " + L.num("100")) {
+                a.showSectionDialog(L.t("Focus score today", "আজকের ফোকাস স্কোর"), buildFocusScoreCard())
+            },
+            iconCard(Ic.BARS, blue, L.t("Last 7 days chart", "গত ৭ দিনের চার্ট"), L.t("Best: ", "সেরা: ") + bestDayLab + " · " + fmtDur(bestDayVal)) {
+                a.showSectionDialog(L.t("Last 7 days chart", "গত ৭ দিনের চার্ট"), buildChartCard())
+            }
+        )
+        pair(
+            iconCard(Ic.CAL, C.primary, L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ"), L.t("This week: ", "এই সপ্তাহ: ") + fmtDur(thisWeekFocus)) {
+                a.showSectionDialog(L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ"), buildWeekCard())
+            },
+            iconCard(Ic.PIN, C.warn, L.t("Focus journey — Dhaka to Cox's Bazar", "ফোকাস যাত্রা — ঢাকা থেকে কক্সবাজার"), L.num(String.format(Locale.US, "%.1f", journeyKm)) + " / " + L.num(Journey.TOTAL_KM.toString()) + L.t(" km", " কিমি")) {
+                a.showSectionDialog(L.t("Focus journey — Dhaka to Cox's Bazar", "ফোকাস যাত্রা — ঢাকা থেকে কক্সবাজার"), a.journeyCard())
+            }
+        )
+        pair(
+            iconCard(Ic.GAME, C.mint, L.t("Mini-games", "মিনি গেম"), L.num("3") + L.t(" games", "টি গেম")) {
+                a.showSectionDialog(L.t("Mini-games", "মিনি গেম"), a.gamesCard())
+            },
+            View(a)
+        )
 
         // (ব্যাজ — নিচের আইকন-কার্ড গ্রিডে।)
 
@@ -1190,9 +1141,7 @@ class StatsScreen(private val a: MainActivity) {
 
         // (ডায়াগনস্টিক — নিচের আইকন-কার্ড গ্রিডে; ট্যাপ করলে পুরো লগের উইন্ডো খোলে।)
 
-        // goals & play: focus journey, mini-games
-        col.addView(a.journeyCard(), lp(MATCH, WRAP, b = a.dp(14)))
-        col.addView(a.gamesCard(), lp(MATCH, WRAP, b = a.dp(14)))
+        // (ফোকাস যাত্রা, মিনি গেম — ওপরের আইকন-কার্ড গ্রিডে।)
 
         // (রেকর্ড বোর্ড — নিচের আইকন-কার্ড গ্রিডে।)
 
@@ -1543,6 +1492,110 @@ class StatsScreen(private val a: MainActivity) {
                 "ফোকাস ${fs.focusMinToday} মিনিট / ${fs.goalMin} মিনিট লক্ষ্য · ${fs.blocksToday}টি ব্লক প্রতিহত · ${fs.streak} দিনের স্ট্রিক$done"
             )
         )
+    }
+
+    /** Focus-score card, built fresh on every open: score + detail + share button. */
+    private fun buildFocusScoreCard(): View {
+        val wrap = LinearLayout(a)
+        wrap.orientation = LinearLayout.VERTICAL
+        val fs = Extra.focusScore(a)
+        val c = a.card()
+        c.addView(a.section(L.t("Focus score today", "আজকের ফোকাস স্কোর")))
+        c.addView(a.tv(L.num(fs.score.toString()) + " / " + L.num("100"), 34f, C.mint, 1), lp(MATCH, WRAP, t = a.dp(8)))
+        val done = if (fs.completedToday) L.t(" · lock completed today", " · আজ লক সম্পন্ন") else ""
+        c.addView(
+            a.tv(
+                L.num(
+                    L.t(
+                        "Focus ${fs.focusMinToday}m of ${fs.goalMin}m goal · ${fs.blocksToday} blocks resisted · ${fs.streak}-day streak$done",
+                        "ফোকাস ${fs.focusMinToday} মিনিট / ${fs.goalMin} মিনিট লক্ষ্য · ${fs.blocksToday}টি ব্লক প্রতিহত · ${fs.streak} দিনের স্ট্রিক$done"
+                    )
+                ), 13f, C.muted
+            ), lp(MATCH, WRAP, t = a.dp(4))
+        )
+        wrap.addView(c, lp(MATCH, WRAP))
+        val shareBtn = a.primaryBtn(L.t("Share my focus card", "আমার ফোকাস কার্ড শেয়ার করুন"))
+        shareBtn.setOnClickListener { FocusCardShare.share(a) }
+        wrap.addView(shareBtn, lp(MATCH, a.dp(52), t = a.dp(12)))
+        return wrap
+    }
+
+    /** Last-7-days bar chart, built fresh on every open. */
+    private fun buildChartCard(): View {
+        val c = a.card()
+        c.addView(a.section(L.t("Last 7 days", "গত ৭ দিন")))
+        val chart = BarChartView(a)
+        val all = Store.sessions(a)
+        val now = System.currentTimeMillis()
+        val vals = ArrayList<Long>()
+        val labs = ArrayList<String>()
+        for (off in -6..0) {
+            val from = Store.dayStart(now, off)
+            val to = Store.dayStart(now, off + 1)
+            vals.add(Store.sumRange(all, from, to))
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = from
+            labs.add(L.dayLong(dayIdx(cal)))
+        }
+        chart.values = vals
+        chart.labels = labs
+        c.addView(chart, lp(MATCH, a.dp(150), t = a.dp(12)))
+        return c
+    }
+
+    /** This-week-vs-last-week comparison, built fresh on every open. */
+    private fun buildWeekCard(): View {
+        val all = Store.sessions(a)
+        val now = System.currentTimeMillis()
+        val end = Long.MAX_VALUE
+        val weekCard = a.card()
+        weekCard.addView(a.section(L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ")))
+        val thisFrom = Store.dayStart(now, -6)
+        val lastFrom = Store.dayStart(now, -13)
+        val thisFocus = Store.sumRange(all, thisFrom, end)
+        val lastFocus = Store.sumRange(all, lastFrom, thisFrom)
+        val thisSessions = all.count { it.ok && it.start >= thisFrom }
+        val lastSessions = all.count { it.ok && it.start >= lastFrom && it.start < thisFrom }
+        val attemptsList = Extra.attempts(a)
+        val thisBlocks = attemptsList.count { it.first >= thisFrom }
+        val lastBlocks = attemptsList.count { it.first >= lastFrom && it.first < thisFrom }
+        fun weekRow(label: String, thisVal: String, lastVal: String, thisN: Long, lastN: Long) {
+            val r = LinearLayout(a)
+            r.gravity = Gravity.CENTER_VERTICAL
+            r.setPadding(0, a.dp(8), 0, a.dp(2))
+            r.addView(a.tv(label, 14f, C.text, 1), lp(0, WRAP, weight = 1f))
+            r.addView(a.tv(thisVal, 15f, C.text, 1))
+            val arrow = when {
+                thisN > lastN -> "▲"
+                thisN < lastN -> "▼"
+                else -> "—"
+            }
+            val arrowColor = when {
+                thisN > lastN -> C.mint
+                thisN < lastN -> C.danger
+                else -> C.muted
+            }
+            val arrowTv = a.tv(arrow, 14f, arrowColor, 1)
+            arrowTv.setPadding(a.dp(8), 0, 0, 0)
+            r.addView(arrowTv)
+            weekCard.addView(r)
+            weekCard.addView(
+                a.tv(L.t("Last week: ", "গত সপ্তাহ: ") + lastVal, 12f, C.muted),
+                lp(MATCH, WRAP, b = a.dp(4))
+            )
+        }
+        weekRow(L.t("Focus time", "ফোকাস সময়"), fmtDur(thisFocus), fmtDur(lastFocus), thisFocus, lastFocus)
+        weekRow(
+            L.t("Completed locks", "সম্পন্ন লক"),
+            L.num(thisSessions.toString()), L.num(lastSessions.toString()),
+            thisSessions.toLong(), lastSessions.toLong()
+        )
+        weekRow(
+            L.t("Blocks resisted", "প্রতিহত ব্লক"),
+            L.num(thisBlocks.toString()), L.num(lastBlocks.toString()),
+            thisBlocks.toLong(), lastBlocks.toLong()
+        )
+        return weekCard
     }
 
     /** (Re)builds the record board from stored history: longest single lock,

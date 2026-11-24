@@ -308,7 +308,7 @@ fun Context.page(): Pair<ScrollView, LinearLayout> {
     return Pair(sv, col)
 }
 
-enum class Ic { HOME, CAL, BARS, GEAR, SHIELD, LOCK, CLOCK, CHECK, PIN, LIST, BOOK, LEAF, AWARD, TROPHY }
+enum class Ic { HOME, CAL, BARS, GEAR, SHIELD, LOCK, CLOCK, CHECK, PIN, LIST, BOOK, LEAF, AWARD, TROPHY, GAME }
 
 /** Line icons drawn with Canvas (no image files needed). */
 object Icons {
@@ -467,6 +467,17 @@ object Icons {
                 path.moveTo(x(0.34f), y(0.86f))
                 path.lineTo(x(0.66f), y(0.86f))
                 cv.drawPath(path, p)
+            }
+            Ic.GAME -> {
+                // dice: rounded square + five pips
+                cv.drawRoundRect(RectF(x(0.18f), y(0.18f), x(0.82f), y(0.82f)), s * 0.12f, s * 0.12f, p)
+                p.style = Paint.Style.FILL
+                val r = s * 0.055f
+                cv.drawCircle(x(0.34f), y(0.34f), r, p)
+                cv.drawCircle(x(0.66f), y(0.34f), r, p)
+                cv.drawCircle(x(0.50f), y(0.50f), r, p)
+                cv.drawCircle(x(0.34f), y(0.66f), r, p)
+                cv.drawCircle(x(0.66f), y(0.66f), r, p)
             }
         }
     }
