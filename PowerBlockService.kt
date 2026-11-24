@@ -651,10 +651,14 @@ class PowerBlockService : AccessibilityService() {
             for (n in nodes) {
                 if (!found) {
                     val text = n.text?.toString()?.trim()
-                    val exact = text != null && (
+                    val desc = n.contentDescription?.toString()?.trim()
+                    val exact = (text != null && (
                         text.equals("Uninstall", ignoreCase = true) ||
                         text == "আনইনস্টল" || text == "আনইনস্টল করুন" || text == "আনইনস্টল করো"
-                    )
+                    )) || (desc != null && (
+                        desc.equals("Uninstall", ignoreCase = true) ||
+                        desc == "আনইনস্টল" || desc == "আনইনস্টল করুন" || desc == "আনইনস্টল করো"
+                    ))
                     if (exact) {
                         if (n.isClickable) found = true
                         val cn = n.className?.toString()
@@ -666,7 +670,7 @@ class PowerBlockService : AccessibilityService() {
                         if (!found) {
                             var ancestor = n.parent
                             var depth = 0
-                            while (ancestor != null && depth < 3 && !found) {
+                            while (ancestor != null && depth < 4 && !found) {
                                 if (ancestor.isClickable) found = true
                                 val ac = ancestor.className?.toString()
                                 if (ac == "android.widget.Button" || ac == "android.widget.ImageButton") found = true
@@ -821,20 +825,25 @@ class PowerBlockService : AccessibilityService() {
                     if (hasUninstallButton(root)) hitPkg = pagePkg
                 }
             }
-        } else {
-            // Generic Play Store uninstall dialog: "Uninstall this app?"
-            // names no app, so it can only be blocked by remembering which
-            // protected app's Store page was open just before it.
+        }
+        // Generic Play Store uninstall dialog: "Uninstall this app?"
+        // names no app, so it can only be blocked by remembering which
+        // protected app's Store page was open just before it. This MUST
+        // run for every package — the Store shows this dialog itself, so
+        // it arrives with pkg == com.android.vending, and keeping it in
+        // the else-branch meant it could never fire (build 89 bug: the
+        // phone long-press dialog worked, the Store dialog never did).
+        if (hitPkg == null) {
             val fresh = lastPlayStoreProtectedPkg != null &&
                 now - lastPlayStoreProtectedAt < 60000
             if (fresh && hasGenericUninstallDialog(root) && hasUninstallButton(root)) {
                 hitPkg = lastPlayStoreProtectedPkg
             }
-            if (hitPkg == null) {
-                // System uninstall dialog / App info: the dialog title names
-                // the app (Uninstall "BlockP"?).
-                hitPkg = findUninstallTarget(root, labels)
-            }
+        }
+        if (hitPkg == null && pkg != "com.android.vending") {
+            // System uninstall dialog / App info: the dialog title names
+            // the app (Uninstall "BlockP"?).
+            hitPkg = findUninstallTarget(root, labels)
         }
         val target = hitPkg ?: return
         if (now - lastUninstallBlock < 1000) return
