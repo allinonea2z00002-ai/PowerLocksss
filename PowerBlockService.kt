@@ -180,12 +180,6 @@ class PowerBlockService : AccessibilityService() {
     private var uninstallProtectLabels: Map<String, String> = emptyMap()
     private var lastUninstallScan = 0L
     private var lastUninstallBlock = 0L
-    // Last protected app whose Play Store page was seen, for the generic
-    // "Uninstall this app?" dialog (which names no app). Cleared when the
-    // user leaves the Play Store / installer.
-    private var lastPlayStoreProtectedPkg: String? = null
-    private var lastPlayStoreProtectedAt = 0L
-    private var lastPlayStoreScan = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -635,137 +629,66 @@ class PowerBlockService : AccessibilityService() {
     }
 
     /**
-     * A real Uninstall button is on screen: a Button, a clickable node, or
-     * a TextView inside a clickable row/container (how Vivo draws its
-     * dialog buttons and long-press menu items). The node's text must be
-     * exactly "Uninstall" — a chat message that merely mentions the word
-     * has a much longer text and never matches, so plain words on the
-     * screen can no longer trigger the block. The one-level parent walk is
-     * safe because of that exact-text gate: a message bubble may be
-     * clickable, but its text is never exactly "Uninstall".
+     * Finds the protected app whose uninstall dialog is showing, or null.
+     * Two gates in one pass over the nodes that mention "Uninstall":
+     *  - a real Uninstall button: a Button, a clickable node, or a TextView
+     *    inside a clickable row/container (how Vivo draws its dialog buttons
+     *    and long-press menu items). The node's text must be exactly
+     *    "Uninstall" — a chat message that merely mentions the word has a
+     *    much longer text and never matches, so plain words on the screen
+     *    can no longer trigger the block (that used to kick the user out of
+     *    the Muse app itself). The one-level parent walk is safe because of
+     *    that exact-text gate: a message bubble may be clickable, but its
+     *    text is never exactly "Uninstall".
+     *  - the dialog title naming the app: a node whose text starts with
+     *    "Uninstall"/"আনইনস্টল" and contains a protected label, e.g.
+     *    Uninstall "BlockP"? This is the gate that stops the false fires:
+     *    a home-screen icon label, a chat message or an app list can show
+     *    the same name anywhere on the screen, but only the uninstall
+     *    dialog titles it "Uninstall <name>?". So an app NOT in the list is
+     *    never blocked — its dialog title names it, not the protected app.
+     * The label is read from the title node directly, so no full-window
+     * text collection is needed here (that was the slow part).
      */
-    private fun hasUninstallButton(root: AccessibilityNodeInfo): Boolean {
+    private fun findUninstallTarget(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
+        var buttonFound = false
+        var hitPkg: String? = null
         for (word in listOf("Uninstall", "আনইনস্টল")) {
             val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
-            var found = false
             for (n in nodes) {
-                if (!found) {
-                    val text = n.text?.toString()?.trim()
-                    val desc = n.contentDescription?.toString()?.trim()
-                    val exact = (text != null && (
-                        text.equals("Uninstall", ignoreCase = true) ||
+                val text = n.text?.toString()?.trim() ?: ""
+                // Dialog title gate.
+                if (hitPkg == null) {
+                    val starts = text.startsWith("Uninstall", ignoreCase = true) || text.startsWith("আনইনস্টল")
+                    if (starts) {
+                        val m = labels.entries.firstOrNull { (_, label) -> text.contains(label) }
+                        if (m != null) hitPkg = m.key
+                    }
+                }
+                // Button gate.
+                if (!buttonFound) {
+                    val exact = text.equals("Uninstall", ignoreCase = true) ||
                         text == "আনইনস্টল" || text == "আনইনস্টল করুন" || text == "আনইনস্টল করো"
-                    )) || (desc != null && (
-                        desc.equals("Uninstall", ignoreCase = true) ||
-                        desc == "আনইনস্টল" || desc == "আনইনস্টল করুন" || desc == "আনইনস্টল করো"
-                    ))
                     if (exact) {
-                        if (n.isClickable) found = true
+                        if (n.isClickable) buttonFound = true
                         val cn = n.className?.toString()
-                        if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") found = true
-                        // Dialog buttons and Play Store buttons can be a
-                        // TextView nested several levels inside a clickable
-                        // container (Compose buttons especially) — walk up
-                        // a few levels looking for a clickable ancestor.
-                        if (!found) {
-                            var ancestor = n.parent
-                            var depth = 0
-                            while (ancestor != null && depth < 4 && !found) {
-                                if (ancestor.isClickable) found = true
-                                val ac = ancestor.className?.toString()
-                                if (ac == "android.widget.Button" || ac == "android.widget.ImageButton") found = true
-                                val next = ancestor.parent
-                                try { ancestor.recycle() } catch (_: Exception) { }
-                                ancestor = next
-                                depth++
-                            }
-                            if (ancestor != null) {
-                                try { ancestor.recycle() } catch (_: Exception) { }
+                        if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") buttonFound = true
+                        // Vivo's dialog buttons and menu items are often a
+                        // TextView inside a clickable row — the parent counts.
+                        if (!buttonFound) {
+                            val p = n.parent
+                            if (p != null) {
+                                if (p.isClickable) buttonFound = true
+                                try { p.recycle() } catch (_: Exception) { }
                             }
                         }
                     }
                 }
                 try { n.recycle() } catch (_: Exception) { }
             }
-            if (found) return true
+            if (buttonFound && hitPkg != null) return hitPkg
         }
-        return false
-    }
-
-    /**
-     * Finds the protected app whose uninstall dialog is showing, or null.
-     * Two gates: a real Uninstall button, and the dialog title naming the
-     * app — one node carrying both "Uninstall"/"আনইনস্টল" and a protected
-     * label, e.g. Uninstall "BlockP"? A home-screen icon label, a chat
-     * message or an app list can show the same name anywhere on the screen,
-     * but only the uninstall dialog puts both in one node. So an app NOT
-     * in the list is never blocked — its dialog title names it, not the
-     * protected app.
-     */
-    private fun findUninstallTarget(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
-        var hitPkg: String? = null
-        for (word in listOf("Uninstall", "আনইনস্টল")) {
-            val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
-            for (n in nodes) {
-                if (hitPkg == null) {
-                    val text = n.text?.toString()?.trim() ?: ""
-                    val mentions = text.contains("Uninstall", ignoreCase = true) || text.contains("আনইনস্টল")
-                    if (mentions) {
-                        val m = labels.entries.firstOrNull { (_, label) -> text.contains(label) }
-                        if (m != null) hitPkg = m.key
-                    }
-                }
-                try { n.recycle() } catch (_: Exception) { }
-            }
-            if (hitPkg != null) break
-        }
-        if (hitPkg == null) return null
-        return if (hasUninstallButton(root)) hitPkg else null
-    }
-
-    /**
-     * Protected app whose name appears anywhere in the Play Store page
-     * text (normalised), or null. No button requirement — this is used to
-     * REMEMBER which protected app's page is open, so the generic
-     * "Uninstall this app?" dialog can be blocked later even if the page
-     * itself was not caught in time. The page title alone is unreliable
-     * (Compose/WebView may not expose it as one node), so the whole page
-     * text is searched; the Store listing name often differs from the
-     * installed label ("X Browser - Light & Super fast" vs "XBrowser"),
-     * so the comparison is normalised and only needs containment.
-     */
-    private fun playStorePagePkg(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
-        val sb = StringBuilder()
-        collectVisibleText(root, sb)
-        if (sb.isEmpty()) return null
-        val pageText = normaliseName(sb.toString())
-        if (pageText.isEmpty()) return null
-        for ((pkg, label) in labels) {
-            val normLabel = normaliseName(label)
-            if (normLabel.length >= 3 && pageText.contains(normLabel)) return pkg
-        }
-        return null
-    }
-
-    /** The Play Store's generic uninstall dialog: a node reading "Uninstall this app?" — it names no app. */
-    private fun hasGenericUninstallDialog(root: AccessibilityNodeInfo): Boolean {
-        val nodes = try { root.findAccessibilityNodeInfosByText("Uninstall this app") } catch (_: Exception) { return false }
-        var found = false
-        for (n in nodes) {
-            val t = n.text?.toString()?.trim() ?: ""
-            if (t.equals("Uninstall this app?", ignoreCase = true)) found = true
-            try { n.recycle() } catch (_: Exception) { }
-        }
-        return found
-    }
-
-    /** Lowercase, letters and digits only — so "X Browser" and "XBrowser" match. */
-    private fun normaliseName(s: String): String {
-        val sb = StringBuilder()
-        for (c in s) {
-            if (c.isLetterOrDigit()) sb.append(c.lowercaseChar())
-        }
-        return sb.toString()
+        return if (buttonFound && hitPkg != null) hitPkg else null
     }
 
     /**
@@ -777,13 +700,9 @@ class PowerBlockService : AccessibilityService() {
      * 1 s dedup against repeats. The user asked for this to be instant
      * because uninstall is the sensitive one. The title gate means an app
      * NOT in the list is never blocked — its dialog names it, not the
-     * protected app. In the Play Store the page itself is blocked instead
-     * (see playStorePagePkg), because the Store's uninstall dialog
-     * ("Uninstall this app?") does not name the app at all — the page the
-     * user just had open is remembered and the generic dialog is blocked
-     * from that memory. Runs for ANY foreground package: on Vivo the
-     * long-press uninstall sheet comes from the launcher itself, not the
-     * installer, so a guarded-package check never sees it.
+     * protected app. Runs for ANY foreground package: on Vivo the long-press
+     * uninstall sheet comes from the launcher itself, not the installer, so a
+     * guarded-package check never sees it.
      */
     private fun onUninstallAttempt(e: AccessibilityEvent) {
         val type = e.eventType
@@ -802,53 +721,11 @@ class PowerBlockService : AccessibilityService() {
         val labels = uninstallProtectLabels()
         if (labels.isEmpty()) return
         val root = rootInActiveWindow ?: return
-        // Forget the Play Store page once the user has left the Store and
-        // is not in an installer dialog.
-        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pkg != "com.android.vending" &&
-            !pkg.contains("packageinstaller") && !pkg.contains("installer")
-        ) {
-            lastPlayStoreProtectedPkg = null
-        }
-        var hitPkg: String? = null
-        if (pkg == "com.android.vending") {
-            // Remember which protected app's page this is, even if the
-            // Uninstall button is not exposed yet — the generic dialog
-            // below is the second chance to block. The full-text scan is
-            // throttled to twice a second so scrolling the Store stays smooth.
-            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 500) {
-                lastPlayStoreScan = now
-                val pagePkg = playStorePagePkg(root, labels)
-                if (pagePkg != null) {
-                    lastPlayStoreProtectedPkg = pagePkg
-                    lastPlayStoreProtectedAt = now
-                    // Block the page itself once the Uninstall button is there.
-                    if (hasUninstallButton(root)) hitPkg = pagePkg
-                }
-            }
-        }
-        // Generic Play Store uninstall dialog: "Uninstall this app?"
-        // names no app, so it can only be blocked by remembering which
-        // protected app's Store page was open just before it. This MUST
-        // run for every package — the Store shows this dialog itself, so
-        // it arrives with pkg == com.android.vending, and keeping it in
-        // the else-branch meant it could never fire (build 89 bug: the
-        // phone long-press dialog worked, the Store dialog never did).
-        if (hitPkg == null) {
-            val fresh = lastPlayStoreProtectedPkg != null &&
-                now - lastPlayStoreProtectedAt < 60000
-            if (fresh && hasGenericUninstallDialog(root) && hasUninstallButton(root)) {
-                hitPkg = lastPlayStoreProtectedPkg
-            }
-        }
-        if (hitPkg == null && pkg != "com.android.vending") {
-            // System uninstall dialog / App info: the dialog title names
-            // the app (Uninstall "BlockP"?).
-            hitPkg = findUninstallTarget(root, labels)
-        }
-        val target = hitPkg ?: return
+        // Button + dialog-title gates, one pass (see findUninstallTarget).
+        val hitPkg = findUninstallTarget(root, labels) ?: return
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
-        Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
+        Extra.logAttempt(this, "uninstall", hitPkg, labels[hitPkg] ?: hitPkg)
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
