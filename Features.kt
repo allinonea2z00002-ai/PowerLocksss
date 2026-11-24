@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "75"
+    const val BUILD_ID = "76"
 
     // ---------- extend time (never reduce) ----------
 
@@ -3620,6 +3620,26 @@ private fun MainActivity.showDiagDialog() {
             Extra.clearAttempts(this)
             go(2)
         }
+        .setNegativeButton(L.t("Close", "বন্ধ করুন"), null)
+        .show()
+}
+
+/** Opens a section's full content in a separate window (dialog). The content
+ * is built fresh by the caller when the section is tapped, so the numbers
+ * are current. Used by the Statistics tab's compact section cards. */
+fun MainActivity.showSectionDialog(title: String, content: View) {
+    val body = LinearLayout(this)
+    body.orientation = LinearLayout.VERTICAL
+    val sv = ScrollView(this)
+    val inner = LinearLayout(this)
+    inner.orientation = LinearLayout.VERTICAL
+    inner.setPadding(dp(20), dp(4), dp(20), dp(4))
+    inner.addView(content)
+    sv.addView(inner)
+    body.addView(sv, lp(MATCH, dp(520)))
+    dlg()
+        .setTitle(title)
+        .setView(body)
         .setNegativeButton(L.t("Close", "বন্ধ করুন"), null)
         .show()
 }
