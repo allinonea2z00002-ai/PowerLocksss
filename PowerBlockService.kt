@@ -704,26 +704,53 @@ class PowerBlockService : AccessibilityService() {
 
     /**
      * Play Store page for a protected app: the page title is the app name
-     * (a node whose text is exactly the label) and the page carries a real
-     * Uninstall button. Returns the protected package, or null. This is
-     * the Play Store stop: the Store's uninstall confirmation does not
-     * reliably name the app in one node, so the dialog alone cannot be
-     * trusted — the page itself is blocked instead, before the Uninstall
-     * button can be reached. Opening a protected app's Store page will
-     * kick the user Home too; open the app from the home screen instead.
+     * and the page carries a real Uninstall button. Returns the protected
+     * package, or null. This is the Play Store stop: the Store's uninstall
+     * confirmation does not reliably name the app in one node, so the
+     * dialog alone cannot be trusted — the page itself is blocked instead,
+     * before the Uninstall button can be reached. Opening a protected
+     * app's Store page will kick the user Home too; open the app from the
+     * home screen instead.
+     *
+     * The Store listing name often differs from the installed label
+     * (spacing, extra words: "X Browser - Light & Super fast" vs
+     * "XBrowser"), so the comparison is normalised — lowercase, letters
+     * and digits only — and the listing name only needs to CONTAIN the
+     * label. The search uses the label's longest word part, because the
+     * raw label ("XBrowser") may not appear as a substring at all.
      */
     private fun findPlayStoreTarget(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
         if (!hasUninstallButton(root)) return null
         for ((pkg, label) in labels) {
-            val nodes = try { root.findAccessibilityNodeInfosByText(label) } catch (_: Exception) { continue }
+            val normLabel = normaliseName(label)
+            if (normLabel.length < 3) continue
+            val key = longestNamePart(label) ?: continue
+            val nodes = try { root.findAccessibilityNodeInfosByText(key) } catch (_: Exception) { continue }
             var found = false
             for (n in nodes) {
-                if (n.text?.toString()?.trim() == label) found = true
+                val t = n.text?.toString()?.trim() ?: ""
+                if (normaliseName(t).contains(normLabel)) found = true
                 try { n.recycle() } catch (_: Exception) { }
             }
             if (found) return pkg
         }
         return null
+    }
+
+    /** Lowercase, letters and digits only — so "X Browser" and "XBrowser" match. */
+    private fun normaliseName(s: String): String {
+        val sb = StringBuilder()
+        for (c in s) {
+            if (c.isLetterOrDigit()) sb.append(c.lowercaseChar())
+        }
+        return sb.toString()
+    }
+
+    /** Longest word part of a label, splitting on spaces and camelCase. */
+    private fun longestNamePart(label: String): String? {
+        val parts = label.split(Regex("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|[^A-Za-z0-9]+"))
+            .filter { it.length >= 3 }
+        return parts.maxByOrNull { it.length }
     }
 
     /**
