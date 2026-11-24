@@ -1250,8 +1250,69 @@ class StatsScreen(private val a: MainActivity) {
         }
     }
 
+    /** Finds a quick card's view in the grid by its key (or null). */
+    private fun findQuickCardView(key: String): View? {
+        if (!::gridWrap.isInitialized) return null
+        for (i in 0 until gridWrap.childCount) {
+            val row = gridWrap.getChildAt(i) as? LinearLayout ?: continue
+            for (j in 0 until row.childCount) {
+                val v = row.getChildAt(j)
+                if (v.tag as? String == key) return v
+            }
+        }
+        return null
+    }
+
+    /** Layout params for a card in the left (with gap) or right slot of a row. */
+    private fun slotLp(isLeft: Boolean): LinearLayout.LayoutParams =
+        if (isLeft) lp(0, MATCH, r = a.dp(10), weight = 1f) else lp(0, MATCH, weight = 1f)
+
+    /** Swaps two quick cards' VIEWS in the grid (no views are created or destroyed,
+     * so the drag source stays alive while dragging). Returns false if either is missing. */
+    private fun swapQuickCardViews(keyA: String, keyB: String): Boolean {
+        if (!::gridWrap.isInitialized) return false
+        var rowA: LinearLayout? = null
+        var idxA = -1
+        var rowB: LinearLayout? = null
+        var idxB = -1
+        for (i in 0 until gridWrap.childCount) {
+            val row = gridWrap.getChildAt(i) as? LinearLayout ?: continue
+            for (j in 0 until row.childCount) {
+                val v = row.getChildAt(j)
+                when (v.tag as? String) {
+                    keyA -> { rowA = row; idxA = j }
+                    keyB -> { rowB = row; idxB = j }
+                }
+            }
+        }
+        val aRow = rowA ?: return false
+        val bRow = rowB ?: return false
+        val viewA = aRow.getChildAt(idxA)
+        val viewB = bRow.getChildAt(idxB)
+        if (aRow == bRow) {
+            val (lo, hi) = if (idxA < idxB) idxA to idxB else idxB to idxA
+            val loView = aRow.getChildAt(lo)
+            val hiView = aRow.getChildAt(hi)
+            aRow.removeViewAt(hi)
+            aRow.removeViewAt(lo)
+            aRow.addView(hiView, lo)
+            aRow.addView(loView, hi)
+            hiView.layoutParams = slotLp(lo == 0)
+            loView.layoutParams = slotLp(hi == 0)
+        } else {
+            aRow.removeView(viewA)
+            bRow.removeView(viewB)
+            aRow.addView(viewB, idxA)
+            bRow.addView(viewA, idxB)
+            viewB.layoutParams = slotLp(idxA == 0)
+            viewA.layoutParams = slotLp(idxB == 0)
+        }
+        return true
+    }
+
     /** Drag-and-drop for the quick cards: press-hold a card, drop it where it should go.
-     * Hovering over another card moves the dragged card there live (and saves the order),
+     * Hovering over another card swaps the two card VIEWS live (no grid rebuild while
+     * dragging — rebuilding mid-drag destroys the drag source and kicks the app out),
      * so the layout follows the finger; dropping anywhere in the grid finishes. */
     private val cardDragListener = View.OnDragListener { v, event ->
         when (event.action) {
@@ -1266,7 +1327,7 @@ class StatsScreen(private val a: MainActivity) {
                         cardOrder.removeAt(from)
                         cardOrder.add(to, dragKey)
                         saveCardOrder()
-                        renderGrid()
+                        swapQuickCardViews(dragKey, targetKey)
                     }
                 }
                 true
@@ -1289,19 +1350,23 @@ class StatsScreen(private val a: MainActivity) {
             }
             DragEvent.ACTION_DROP -> {
                 saveCardOrder()
+                findQuickCardView(draggingKey ?: "")?.visibility = View.VISIBLE
                 draggingKey = null
                 scrollHandler.removeCallbacks(autoScrollRunnable)
                 autoScrolling = false
                 lastDragY = -1f
-                renderGrid()
                 true
             }
             DragEvent.ACTION_DRAG_ENDED -> {
                 scrollHandler.removeCallbacks(autoScrollRunnable)
                 autoScrolling = false
                 lastDragY = -1f
-                if (draggingKey != null) {
+                val dk = draggingKey
+                if (dk != null) {
+                    // the drop was missed (released outside the grid): show the card again
+                    // and rebuild the grid once, now that the drag is fully over
                     draggingKey = null
+                    findQuickCardView(dk)?.visibility = View.VISIBLE
                     renderGrid()
                 }
                 true
