@@ -169,6 +169,7 @@ class PowerBlockService : AccessibilityService() {
     private var lastForegroundPkg: String? = null
     private var lastBrowserScanAt = 0L
     private var lastTypedScanAt = 0L // throttles the non-browser typed-field scan (once per 2 s)
+    private var lastVisibleTextScan = 0L // throttles the full visible-text keyword scan (once per 2 s)
     private var lastUrlCheckAt = 0L
     private var lastCheckedUrl = ""
     private var lastSiteOverlayAt = 0L
@@ -491,6 +492,18 @@ class PowerBlockService : AccessibilityService() {
                 e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             ) {
                 scanForegroundTypedFields(pkg)
+            }
+            // ScreenGuard-style full-text block: keywords anywhere in the
+            // VISIBLE text — posts, captions, titles, messages — not just
+            // typed text or URLs. Same KeywordBlock matcher (built-in +
+            // custom) and the same shared block screen. Lock-gated like
+            // the other keyword checks; throttled, and content changes
+            // are included so a feed that loads while scrolling is caught.
+            if (siteKwOn && protecting() && pkg != packageName && !pkg.contains("systemui") &&
+                (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                    e.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+            ) {
+                scanVisibleTextForKeywords(pkg)
             }
             // the block screen follows the foreground app: hide it once protection ends,
             // or once a real window change shows another app in front. Our own package
@@ -1325,6 +1338,74 @@ class PowerBlockService : AccessibilityService() {
             return
         } ?: return
         if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true)
+    }
+
+    /**
+     * Full visible-text keyword scan (ScreenGuard-style): walks the whole
+     * foreground window and keyword-checks ALL visible text — posts,
+     * captions, titles, messages — not just editable fields or the
+     * address bar. A keyword showing on screen (not typed) is caught
+     * here; typed text and URLs are already covered by the checks above.
+     * Same matcher, same block screen, same logging as a typed keyword.
+     * Bounded like the other scans: throttled to once per 2 s, at most
+     * 600 nodes walked, at most 20,000 characters collected. Password
+     * fields are never read, and the scan never runs while the block
+     * screen is already up (its own title holds the keyword).
+     */
+    private fun scanVisibleTextForKeywords(pkg: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastVisibleTextScan < 2000) return
+        lastVisibleTextScan = now
+        if (isBlockOverlayAttached()) return
+        try {
+            val root = rootInActiveWindow ?: return
+            try {
+                val rootPkg = root.packageName?.toString() ?: return
+                if (rootPkg == packageName) return
+                val sb = StringBuilder()
+                collectVisibleText(root, sb)
+                if (sb.isEmpty()) return
+                val kw = try {
+                    KeywordBlock.findMatch(applicationContext, sb.toString(), Extra.siteKeywords(applicationContext))
+                } catch (ex: Exception) {
+                    Log.e(TAG, "visible text keyword match failed", ex)
+                    return
+                } ?: return
+                if (protecting()) onSiteBlocked(L.t("Keyword: $kw", "কিওয়ার্ড: $kw"), pkg, allowAnyApp = true)
+            } finally {
+                try { root.recycle() } catch (_: Exception) { }
+            }
+        } catch (ex: Exception) {
+            Log.e(TAG, "visible text keyword scan failed", ex)
+        }
+    }
+
+    private fun collectVisibleText(root: AccessibilityNodeInfo, sb: StringBuilder) {
+        val stack = ArrayDeque<AccessibilityNodeInfo>()
+        stack.add(root)
+        var used = 0
+        try {
+            while (stack.isNotEmpty() && used < 600 && sb.length < 20000) {
+                val n = stack.removeFirst()
+                used++
+                try {
+                    if (!n.isPassword) {
+                        n.text?.let { if (it.isNotEmpty()) sb.append(it).append(' ') }
+                        n.contentDescription?.let { if (it.isNotEmpty()) sb.append(it).append(' ') }
+                    }
+                    for (i in 0 until n.childCount) {
+                        try { n.getChild(i)?.let { stack.add(it) } } catch (_: Exception) { }
+                    }
+                } catch (_: Exception) {
+                } finally {
+                    if (n !== root) {
+                        try { n.recycle() } catch (_: Exception) { }
+                    }
+                }
+            }
+        } catch (ex: Exception) {
+            Log.e(TAG, "visible text collect failed", ex)
+        }
     }
 
     /**
