@@ -1377,7 +1377,10 @@ class StatsScreen(private val a: MainActivity) {
         card.parent?.requestDisallowInterceptTouchEvent(true)
     }
 
-    /** The card (if any) whose bounds contain the finger's screen position. */
+    /** The card (if any) whose CENTRAL zone contains the finger's screen position.
+     * The finger must be well inside a card — not just grazing its edge — before
+     * the dragged card swaps with it. Swapping on any touch made the cards
+     * jump at the slightest move, so the drag felt impossible to aim. */
     private fun cardUnderPoint(rawX: Float, rawY: Float): String? {
         if (!::gridWrap.isInitialized) return null
         for (i in 0 until gridWrap.childCount) {
@@ -1388,7 +1391,11 @@ class StatsScreen(private val a: MainActivity) {
                 if (k == draggingKey) continue
                 val loc = IntArray(2)
                 v.getLocationOnScreen(loc)
-                if (rawX >= loc[0] && rawX <= loc[0] + v.width && rawY >= loc[1] && rawY <= loc[1] + v.height) {
+                val cx0 = loc[0] + v.width * 0.25f
+                val cx1 = loc[0] + v.width * 0.75f
+                val cy0 = loc[1] + v.height * 0.25f
+                val cy1 = loc[1] + v.height * 0.75f
+                if (rawX >= cx0 && rawX <= cx1 && rawY >= cy0 && rawY <= cy1) {
                     return k
                 }
             }
