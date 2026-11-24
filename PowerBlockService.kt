@@ -629,39 +629,56 @@ class PowerBlockService : AccessibilityService() {
     }
 
     /**
-     * "Uninstall" must sit on a real button the user can tap — a Button, a
-     * clickable node, or a TextView inside a clickable row/container (how
-     * Vivo draws its dialog buttons and long-press menu items). The node's
-     * text must be exactly "Uninstall" — a chat message that merely mentions
-     * the word has a much longer text and never matches, so plain words on
-     * the screen can no longer trigger the block (that used to kick the user
-     * out of the Muse app itself). The one-level parent walk is safe because
-     * of that exact-text gate: a message bubble may be clickable, but its
-     * text is never exactly "Uninstall". A real uninstall dialog, the App
-     * info page and the installer's confirmation all carry a genuine
-     * Uninstall button, so the protection still fires there.
+     * Finds the protected app whose uninstall dialog is showing, or null.
+     * Two gates in one pass over the nodes that mention "Uninstall":
+     *  - a real Uninstall button: a Button, a clickable node, or a TextView
+     *    inside a clickable row/container (how Vivo draws its dialog buttons
+     *    and long-press menu items). The node's text must be exactly
+     *    "Uninstall" — a chat message that merely mentions the word has a
+     *    much longer text and never matches, so plain words on the screen
+     *    can no longer trigger the block (that used to kick the user out of
+     *    the Muse app itself). The one-level parent walk is safe because of
+     *    that exact-text gate: a message bubble may be clickable, but its
+     *    text is never exactly "Uninstall".
+     *  - the dialog title naming the app: a node whose text starts with
+     *    "Uninstall"/"আনইনস্টল" and contains a protected label, e.g.
+     *    Uninstall "BlockP"? This is the gate that stops the false fires:
+     *    a home-screen icon label, a chat message or an app list can show
+     *    the same name anywhere on the screen, but only the uninstall
+     *    dialog titles it "Uninstall <name>?". So an app NOT in the list is
+     *    never blocked — its dialog title names it, not the protected app.
+     * The label is read from the title node directly, so no full-window
+     * text collection is needed here (that was the slow part).
      */
-    private fun hasUninstallButton(root: AccessibilityNodeInfo): Boolean {
+    private fun findUninstallTarget(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
+        var buttonFound = false
+        var hitPkg: String? = null
         for (word in listOf("Uninstall", "আনইনস্টল")) {
             val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
-            var found = false
             for (n in nodes) {
-                if (!found) {
-                    val text = n.text?.toString()?.trim()
-                    val exact = text != null && (
-                        text.equals("Uninstall", ignoreCase = true) ||
+                val text = n.text?.toString()?.trim() ?: ""
+                // Dialog title gate.
+                if (hitPkg == null) {
+                    val starts = text.startsWith("Uninstall", ignoreCase = true) || text.startsWith("আনইনস্টল")
+                    if (starts) {
+                        val m = labels.entries.firstOrNull { (_, label) -> text.contains(label) }
+                        if (m != null) hitPkg = m.key
+                    }
+                }
+                // Button gate.
+                if (!buttonFound) {
+                    val exact = text.equals("Uninstall", ignoreCase = true) ||
                         text == "আনইনস্টল" || text == "আনইনস্টল করুন" || text == "আনইনস্টল করো"
-                    )
                     if (exact) {
-                        if (n.isClickable) found = true
+                        if (n.isClickable) buttonFound = true
                         val cn = n.className?.toString()
-                        if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") found = true
+                        if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") buttonFound = true
                         // Vivo's dialog buttons and menu items are often a
                         // TextView inside a clickable row — the parent counts.
-                        if (!found) {
+                        if (!buttonFound) {
                             val p = n.parent
                             if (p != null) {
-                                if (p.isClickable) found = true
+                                if (p.isClickable) buttonFound = true
                                 try { p.recycle() } catch (_: Exception) { }
                             }
                         }
@@ -669,21 +686,21 @@ class PowerBlockService : AccessibilityService() {
                 }
                 try { n.recycle() } catch (_: Exception) { }
             }
-            if (found) return true
+            if (buttonFound && hitPkg != null) return hitPkg
         }
-        return false
+        return if (buttonFound && hitPkg != null) hitPkg else null
     }
 
     /**
      * Uninstall protection (instant, no lock needed): the installer — or a
      * system screen such as App info — is showing an uninstall confirmation
-     * for a protected app: a real clickable "Uninstall" button plus the app's
-     * name in the window text. The block fires the moment the dialog appears:
-     * no 300 ms wait like [onGuarded], only a 1 s dedup against repeats. The
-     * user asked for this to be instant because uninstall is the sensitive
-     * one. Note this also sends Home from a protected app's App info page,
-     * since that page carries the same "Uninstall" button — that is part of
-     * the protection. Runs for ANY foreground package: on Vivo the long-press
+     * for a protected app: a real clickable "Uninstall" button plus the
+     * dialog title naming the app (Uninstall "BlockP"?). The block fires the
+     * moment the dialog appears: no 300 ms wait like [onGuarded], only a
+     * 1 s dedup against repeats. The user asked for this to be instant
+     * because uninstall is the sensitive one. The title gate means an app
+     * NOT in the list is never blocked — its dialog names it, not the
+     * protected app. Runs for ANY foreground package: on Vivo the long-press
      * uninstall sheet comes from the launcher itself, not the installer, so a
      * guarded-package check never sees it.
      */
@@ -699,23 +716,16 @@ class PowerBlockService : AccessibilityService() {
         val pkg = e.packageName?.toString() ?: return
         if (pkg == packageName) return
         val now = SystemClock.uptimeMillis()
-        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 200) return
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 50) return
         lastUninstallScan = now
         val labels = uninstallProtectLabels()
         if (labels.isEmpty()) return
         val root = rootInActiveWindow ?: return
-        // The Uninstall word must be a real button first — plain text is not
-        // enough (see hasUninstallButton). Only then read the window text
-        // for the protected app's name.
-        if (!hasUninstallButton(root)) return
-        val sb = StringBuilder()
-        collectVisibleText(root, sb)
-        if (sb.isEmpty()) return
-        val t = sb.toString()
-        val hit = labels.entries.firstOrNull { (_, label) -> t.contains(label) } ?: return
+        // Button + dialog-title gates, one pass (see findUninstallTarget).
+        val hitPkg = findUninstallTarget(root, labels) ?: return
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
-        Extra.logAttempt(this, "uninstall", hit.key, hit.value)
+        Extra.logAttempt(this, "uninstall", hitPkg, labels[hitPkg] ?: hitPkg)
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
