@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "75"
+    const val BUILD_ID = "74"
 
     // ---------- extend time (never reduce) ----------
 
@@ -1914,7 +1914,7 @@ fun MainActivity.uninstallProtectCard(): View {
     pick.setOnClickListener {
         groupAppPicker(Extra.uninstallProtectApps(this)) { newSet ->
             Extra.setUninstallProtectApps(this, newSet)
-            go(4)
+            go(3)
         }
     }
     c.addView(pick, lp(MATCH, dp(48), t = dp(10)))

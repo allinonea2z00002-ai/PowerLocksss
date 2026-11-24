@@ -1923,6 +1923,7 @@ class SettingsScreen(private val a: MainActivity) {
             col.addView(a.artPadCard(), lp(MATCH, WRAP, b = a.dp(12)))
         }
         col.addView(a.uninstallBlockCard(), lp(MATCH, WRAP, b = a.dp(12)))
+        col.addView(a.uninstallProtectCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.lockProfilesCard(), lp(MATCH, WRAP, b = a.dp(12)))
 
         // general
@@ -2079,7 +2080,6 @@ class ProtectionScreen(private val a: MainActivity) {
         col.addView(a.lockedAppsCard("msg"), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.dailyLimitsCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.appGroupsCard(), lp(MATCH, WRAP, b = a.dp(12)))
-        col.addView(a.uninstallProtectCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.diagnosticCard(), lp(MATCH, WRAP, b = a.dp(12)))
         return sv
     }
