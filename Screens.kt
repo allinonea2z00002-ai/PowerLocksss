@@ -973,6 +973,11 @@ class StatsScreen(private val a: MainActivity) {
     private lateinit var focusScoreDetail: TextView
     private lateinit var recordCard: LinearLayout
     private var lastStatsTick = 0L
+    // quick-option cards: saved order + arrange mode
+    private lateinit var gridWrap: LinearLayout
+    private var arrangeMode = false
+    private var cardOrder = ArrayList<String>()
+    private var qSummaries = HashMap<String, String>()
 
     fun build(): View {
         Store.finalizeIfExpired(a)
@@ -1029,9 +1034,11 @@ class StatsScreen(private val a: MainActivity) {
             statCard(Ic.SHIELD, L.t("Longest session", "সবচেয়ে বড় সেশন"), fmtDur(longest))
         )
 
+        // আটকানো চেষ্টা — সবার ওপরে (ফোকাস স্কোরের কাছে)।
+        col.addView(a.attemptsCard(), lp(MATCH, WRAP, b = a.dp(14)))
+
         // সব লম্বা সেকশন — কুইক অ্যাকশনের মতো আইকন কার্ডের গ্রিড (২ কলাম)।
         // প্রতিটি কার্ডে ট্যাপ করলে সেকশনের পুরো কনটেন্ট আলাদা উইন্ডোতে খোলে।
-        val blue = Color.parseColor("#6AA5FF")
         val usageToday = Extra.usageTodayAll(a)
         val usageTodaySec = usageToday.values.sum()
         val logTodaySec = Extra.usageDayTotal(a, Store.dayKey(0))
@@ -1043,50 +1050,6 @@ class StatsScreen(private val a: MainActivity) {
         val lockedDays = Store.focusDayMap(a).size
         val focus7Min = fs.last7.sum()
         val blocksToday = Extra.attempts(a).count { it.first >= today }
-        pair(
-            iconCard(Ic.LIST, C.primary, L.t("Session history", "সেশন ইতিহাস"), L.num(all.size.toString()) + L.t(" sessions · ", "টি সেশন · ") + L.num(completed.toString()) + L.t(" completed", "টি সম্পন্ন")) {
-                a.showSectionDialog(L.t("Session history", "সেশন ইতিহাস"), buildHistoryBody(all))
-            },
-            iconCard(Ic.BOOK, C.warn, L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), L.num(storyUnlocked.toString()) + "/" + L.num(Story.TOTAL.toString()) + L.t(" chapters · ", " অধ্যায় · ") + L.num(storyRead.toString()) + L.t(" read", "টি পড়া")) {
-                a.showSectionDialog(L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), a.storyCard())
-            }
-        )
-        pair(
-            iconCard(Ic.LEAF, C.mint, L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), L.t(treeStage.nameEn, treeStage.nameBn) + " · " + L.num(gardenSize.toString()) + L.t(" plants", "টি গাছ")) {
-                a.showSectionDialog(L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), a.treeGardenCard())
-            },
-            iconCard(Ic.CAL, blue, L.t("Usage log", "ব্যবহারের লগ"), L.t("Today: ", "আজ মোট ") + fmtDur(logTodaySec * 1000L)) {
-                a.showSectionDialog(L.t("Usage log", "ব্যবহারের লগ"), buildUsageLogCard())
-            }
-        )
-        pair(
-            iconCard(Ic.BARS, C.danger, L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), fmtDur(usageTodaySec * 1000L) + " · " + L.num(usageToday.size.toString()) + L.t(" apps", "টি অ্যাপ")) {
-                usageCard = a.card()
-                buildUsageCardBody()
-                a.showSectionDialog(L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), usageCard)
-            },
-            iconCard(Ic.AWARD, C.warn, L.t("Badges", "ব্যাজ"), L.num(badgesEarned.toString()) + "/" + L.num(Badges.ALL.size.toString()) + L.t(" badges earned", "টি ব্যাজ পেয়েছেন")) {
-                a.showSectionDialog(L.t("Badges", "ব্যাজ"), buildBadgesBody())
-            }
-        )
-        pair(
-            iconCard(Ic.LOCK, C.primary, L.t("Lock calendar", "লক ক্যালেন্ডার"), L.num(lockedDays.toString()) + L.t(" days locked", " দিন লক")) {
-                a.showSectionDialog(L.t("Lock calendar", "লক ক্যালেন্ডার"), buildCalendarCard())
-            },
-            iconCard(Ic.CLOCK, blue, L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন"), L.t("Total ", "মোট ") + fmtDur(focus7Min * 60000L)) {
-                a.showSectionDialog(L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন"), buildFocus7Body())
-            }
-        )
-        pair(
-            iconCard(Ic.TROPHY, C.mint, L.t("Record board", "রেকর্ড বোর্ড"), L.t("Best: ", "সেরা: ") + fmtDur(longest)) {
-                recordCard = a.card()
-                buildRecordBoardBody()
-                a.showSectionDialog(L.t("Record board", "রেকর্ড বোর্ড"), recordCard)
-            },
-            iconCard(Ic.SHIELD, C.danger, L.t("Diagnostics", "ডায়াগনস্টিক"), L.t("Today: ", "আজ ") + L.num(blocksToday.toString()) + L.t(" blocks", "টি ব্লক")) {
-                a.showDiagDialog()
-            }
-        )
         // নতুন আইকন কার্ডগুলোর সারাংশের মান (ফোকাস স্কোর, চার্টের সেরা দিন,
         // এই সপ্তাহের ফোকাস, যাত্রার কিমি)।
         val scoreToday = Extra.focusScore(a)
@@ -1105,53 +1068,33 @@ class StatsScreen(private val a: MainActivity) {
             }
         }
         val journeyKm = Journey.totalKm(a)
-        pair(
-            iconCard(Ic.CHECK, C.mint, L.t("Focus score today", "আজকের ফোকাস স্কোর"), L.num(scoreToday.score.toString()) + " / " + L.num("100")) {
-                a.showSectionDialog(L.t("Focus score today", "আজকের ফোকাস স্কোর"), buildFocusScoreCard())
-            },
-            iconCard(Ic.BARS, blue, L.t("Last 7 days chart", "গত ৭ দিনের চার্ট"), L.t("Best: ", "সেরা: ") + bestDayLab + " · " + fmtDur(bestDayVal)) {
-                a.showSectionDialog(L.t("Last 7 days chart", "গত ৭ দিনের চার্ট"), buildChartCard())
-            }
-        )
-        pair(
-            iconCard(Ic.CAL, C.primary, L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ"), L.t("This week: ", "এই সপ্তাহ: ") + fmtDur(thisWeekFocus)) {
-                a.showSectionDialog(L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ"), buildWeekCard())
-            },
-            iconCard(Ic.PIN, C.warn, L.t("Focus journey — Dhaka to Cox's Bazar", "ফোকাস যাত্রা — ঢাকা থেকে কক্সবাজার"), L.num(String.format(Locale.US, "%.1f", journeyKm)) + " / " + L.num(Journey.TOTAL_KM.toString()) + L.t(" km", " কিমি")) {
-                a.showSectionDialog(L.t("Focus journey — Dhaka to Cox's Bazar", "ফোকাস যাত্রা — ঢাকা থেকে কক্সবাজার"), a.journeyCard())
-            }
-        )
-        pair(
-            iconCard(Ic.GAME, C.mint, L.t("Mini-games", "মিনি গেম"), L.num("3") + L.t(" games", "টি গেম")) {
-                a.showSectionDialog(L.t("Mini-games", "মিনি গেম"), a.gamesCard())
-            },
-            View(a)
-        )
-
-        // (ব্যাজ — নিচের আইকন-কার্ড গ্রিডে।)
-
-        // (লক ক্যালেন্ডার — নিচের আইকন-কার্ড গ্রিডে।)
-
-        // (আজকের অ্যাপ ব্যবহার — নিচের আইকন-কার্ড গ্রিডে; ডায়ালগ খুললে tick() লাইভ আপডেট করে।)
-
-        // (ব্যবহারের লগ — নিচের আইকন-কার্ড গ্রিডে।)
-
-        // temptation counter: blocked attempts (today / 7 days / total + per kind)
-        col.addView(a.attemptsCard(), lp(MATCH, WRAP, b = a.dp(14)))
-
-        // (ডায়াগনস্টিক — নিচের আইকন-কার্ড গ্রিডে; ট্যাপ করলে পুরো লগের উইন্ডো খোলে।)
-
-        // (ফোকাস যাত্রা, মিনি গেম — ওপরের আইকন-কার্ড গ্রিডে।)
-
-        // (রেকর্ড বোর্ড — নিচের আইকন-কার্ড গ্রিডে।)
-
-        // (সেশন ইতিহাস — নিচের আইকন-কার্ড গ্রিডে।)
+        // কুইক কার্ডগুলোর এক লাইনের সারাংশ (সাজানোর সময়ও একই থাকে)।
+        qSummaries["session"] = L.num(all.size.toString()) + L.t(" sessions · ", "টি সেশন · ") + L.num(completed.toString()) + L.t(" completed", "টি সম্পন্ন")
+        qSummaries["story"] = L.num(storyUnlocked.toString()) + "/" + L.num(Story.TOTAL.toString()) + L.t(" chapters · ", " অধ্যায় · ") + L.num(storyRead.toString()) + L.t(" read", "টি পড়া")
+        qSummaries["tree"] = L.t(treeStage.nameEn, treeStage.nameBn) + " · " + L.num(gardenSize.toString()) + L.t(" plants", "টি গাছ")
+        qSummaries["usageLog"] = L.t("Today: ", "আজ মোট ") + fmtDur(logTodaySec * 1000L)
+        qSummaries["appUsage"] = fmtDur(usageTodaySec * 1000L) + " · " + L.num(usageToday.size.toString()) + L.t(" apps", "টি অ্যাপ")
+        qSummaries["badges"] = L.num(badgesEarned.toString()) + "/" + L.num(Badges.ALL.size.toString()) + L.t(" badges earned", "টি ব্যাজ পেয়েছেন")
+        qSummaries["lockCal"] = L.num(lockedDays.toString()) + L.t(" days locked", " দিন লক")
+        qSummaries["focus7"] = L.t("Total ", "মোট ") + fmtDur(focus7Min * 60000L)
+        qSummaries["record"] = L.t("Best: ", "সেরা: ") + fmtDur(longest)
+        qSummaries["diag"] = L.t("Today: ", "আজ ") + L.num(blocksToday.toString()) + L.t(" blocks", "টি ব্লক")
+        qSummaries["score"] = L.num(scoreToday.score.toString()) + " / " + L.num("100")
+        qSummaries["chart"] = L.t("Best: ", "সেরা: ") + bestDayLab + " · " + fmtDur(bestDayVal)
+        qSummaries["week"] = L.t("This week: ", "এই সপ্তাহ: ") + fmtDur(thisWeekFocus)
+        qSummaries["journey"] = L.num(String.format(Locale.US, "%.1f", journeyKm)) + " / " + L.num(Journey.TOTAL_KM.toString()) + L.t(" km", " কিমি")
+        qSummaries["games"] = L.num("3") + L.t(" games", "টি গেম")
+        cardOrder = loadCardOrder()
+        gridWrap = LinearLayout(a)
+        gridWrap.orientation = LinearLayout.VERTICAL
+        col.addView(gridWrap, lp(MATCH, WRAP))
+        renderGrid()
         return sv
     }
 
     /** কুইক অ্যাকশনের মতো আইকন কার্ড: রঙিন বৃত্তে আইকন + শিরোনাম + এক লাইন সারাংশ।
      * ট্যাপ করলে onOpen() চলে — সেকশনের পুরো কনটেন্ট আলাদা উইন্ডোতে খোলে। */
-    private fun iconCard(icon: Ic, iconColor: Int, title: String, summary: String, onOpen: () -> Unit): View {
+    private fun iconCard(key: String, icon: Ic, iconColor: Int, title: String, summary: String, onOpen: () -> Unit): View {
         val c = a.card(14)
         val circle = LinearLayout(a)
         circle.gravity = Gravity.CENTER
@@ -1167,9 +1110,149 @@ class StatsScreen(private val a: MainActivity) {
         val s = a.tv(summary, 12f, C.muted)
         s.gravity = Gravity.CENTER
         c.addView(s, lp(MATCH, WRAP, t = a.dp(2), b = a.dp(14)))
+        if (arrangeMode) {
+            val arrows = LinearLayout(a)
+            arrows.gravity = Gravity.CENTER
+            val idx = cardOrder.indexOf(key)
+            val up = a.tv("▲", 16f, if (idx > 0) C.primary else C.muted, 1)
+            up.setPadding(a.dp(18), a.dp(2), a.dp(18), a.dp(6))
+            up.pressFeedback()
+            up.setOnClickListener { moveCard(key, -1) }
+            val down = a.tv("▼", 16f, if (idx < cardOrder.size - 1) C.primary else C.muted, 1)
+            down.setPadding(a.dp(18), a.dp(2), a.dp(18), a.dp(6))
+            down.pressFeedback()
+            down.setOnClickListener { moveCard(key, 1) }
+            arrows.addView(up)
+            arrows.addView(down)
+            c.addView(arrows, lp(MATCH, WRAP, b = a.dp(8)))
+        }
         c.pressFeedback()
-        c.setOnClickListener { onOpen() }
+        c.setOnClickListener { if (!arrangeMode) onOpen() }
+        c.setOnLongClickListener { toggleArrangeMode(); true }
         return c
+    }
+
+    /** Builds one quick-option card by key (order comes from cardOrder). */
+    private fun buildQuickCard(key: String): View {
+        val s = qSummaries[key] ?: ""
+        val blue = Color.parseColor("#6AA5FF")
+        return when (key) {
+            "session" -> iconCard(key, Ic.LIST, C.primary, L.t("Session history", "সেশন ইতিহাস"), s) {
+                a.showSectionDialog(L.t("Session history", "সেশন ইতিহাস"), buildHistoryBody(Store.sessions(a)))
+            }
+            "story" -> iconCard(key, Ic.BOOK, C.warn, L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), s) {
+                a.showSectionDialog(L.t("Story — The Quiet Garden", "গল্প — শান্ত বাগান"), a.storyCard())
+            }
+            "tree" -> iconCard(key, Ic.LEAF, C.mint, L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), s) {
+                a.showSectionDialog(L.t("Focus tree & garden", "ফোকাস গাছ ও বাগান"), a.treeGardenCard())
+            }
+            "usageLog" -> iconCard(key, Ic.CAL, blue, L.t("Usage log", "ব্যবহারের লগ"), s) {
+                a.showSectionDialog(L.t("Usage log", "ব্যবহারের লগ"), buildUsageLogCard())
+            }
+            "appUsage" -> iconCard(key, Ic.BARS, C.danger, L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), s) {
+                usageCard = a.card()
+                buildUsageCardBody()
+                a.showSectionDialog(L.t("App usage today", "আজকের অ্যাপ ব্যবহার"), usageCard)
+            }
+            "badges" -> iconCard(key, Ic.AWARD, C.warn, L.t("Badges", "ব্যাজ"), s) {
+                a.showSectionDialog(L.t("Badges", "ব্যাজ"), buildBadgesBody())
+            }
+            "lockCal" -> iconCard(key, Ic.LOCK, C.primary, L.t("Lock calendar", "লক ক্যালেন্ডার"), s) {
+                a.showSectionDialog(L.t("Lock calendar", "লক ক্যালেন্ডার"), buildCalendarCard())
+            }
+            "focus7" -> iconCard(key, Ic.CLOCK, blue, L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন"), s) {
+                a.showSectionDialog(L.t("Focus — last 7 days", "ফোকাস — গত ৭ দিন"), buildFocus7Body())
+            }
+            "record" -> iconCard(key, Ic.TROPHY, C.mint, L.t("Record board", "রেকর্ড বোর্ড"), s) {
+                recordCard = a.card()
+                buildRecordBoardBody()
+                a.showSectionDialog(L.t("Record board", "রেকর্ড বোর্ড"), recordCard)
+            }
+            "diag" -> iconCard(key, Ic.SHIELD, C.danger, L.t("Diagnostics", "ডায়াগনস্টিক"), s) {
+                a.showDiagDialog()
+            }
+            "score" -> iconCard(key, Ic.CHECK, C.mint, L.t("Focus score today", "আজকের ফোকাস স্কোর"), s) {
+                a.showSectionDialog(L.t("Focus score today", "আজকের ফোকাস স্কোর"), buildFocusScoreCard())
+            }
+            "chart" -> iconCard(key, Ic.BARS, blue, L.t("Last 7 days chart", "গত ৭ দিনের চার্ট"), s) {
+                a.showSectionDialog(L.t("Last 7 days chart", "গত ৭ দিনের চার্ট"), buildChartCard())
+            }
+            "week" -> iconCard(key, Ic.CAL, C.primary, L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ"), s) {
+                a.showSectionDialog(L.t("This week vs last week", "এই সপ্তাহ বনাম গত সপ্তাহ"), buildWeekCard())
+            }
+            "journey" -> iconCard(key, Ic.PIN, C.warn, L.t("Focus journey — Dhaka to Cox's Bazar", "ফোকাস যাত্রা — ঢাকা থেকে কক্সবাজার"), s) {
+                a.showSectionDialog(L.t("Focus journey — Dhaka to Cox's Bazar", "ফোকাস যাত্রা — ঢাকা থেকে কক্সবাজার"), a.journeyCard())
+            }
+            "games" -> iconCard(key, Ic.GAME, C.mint, L.t("Mini-games", "মিনি গেম"), s) {
+                a.showSectionDialog(L.t("Mini-games", "মিনি গেম"), a.gamesCard())
+            }
+            else -> View(a)
+        }
+    }
+
+    /** Default quick-card order (top to bottom, left to right). */
+    private fun defaultCardOrder(): ArrayList<String> = arrayListOf(
+        "session", "story", "tree", "usageLog", "appUsage", "badges", "lockCal",
+        "focus7", "record", "diag", "score", "chart", "week", "journey", "games"
+    )
+
+    /** Saved quick-card order, merged with the default (new cards append at the end). */
+    private fun loadCardOrder(): ArrayList<String> {
+        val def = defaultCardOrder()
+        val saved = Store.settings(a).getString("quick_order", "") ?: ""
+        val keys = saved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (keys.isEmpty()) return def
+        val out = ArrayList<String>()
+        for (k in keys) if (k in def && k !in out) out.add(k)
+        for (k in def) if (k !in out) out.add(k)
+        return out
+    }
+
+    private fun saveCardOrder() {
+        Store.settings(a).edit().putString("quick_order", cardOrder.joinToString(",")).apply()
+    }
+
+    /** Rebuilds the quick-card grid from cardOrder (in place, no tab rebuild). */
+    private fun renderGrid() {
+        if (!::gridWrap.isInitialized) return
+        gridWrap.removeAllViews()
+        if (arrangeMode) {
+            val hint = a.tv(L.t("Arrange mode: use ▲▼ to move a card. Long-press any card to finish.", "সাজানোর মোড: ▲▼ দিয়ে কার্ড সরাও। শেষ হলে যেকোনো কার্ড লং-প্রেস করো।"), 12f, C.muted)
+            hint.gravity = Gravity.CENTER
+            gridWrap.addView(hint, lp(MATCH, WRAP, b = a.dp(8)))
+        }
+        var i = 0
+        while (i < cardOrder.size) {
+            val x = buildQuickCard(cardOrder[i])
+            val y = if (i + 1 < cardOrder.size) buildQuickCard(cardOrder[i + 1]) else View(a)
+            val r = LinearLayout(a)
+            r.addView(x, lp(0, MATCH, r = a.dp(10), weight = 1f))
+            r.addView(y, lp(0, MATCH, weight = 1f))
+            gridWrap.addView(r, lp(MATCH, WRAP, b = a.dp(10)))
+            i += 2
+        }
+    }
+
+    /** Moves one quick card up (-1) or down (+1) and saves the order. */
+    private fun moveCard(key: String, delta: Int) {
+        val idx = cardOrder.indexOf(key)
+        val to = idx + delta
+        if (idx < 0 || to < 0 || to >= cardOrder.size) return
+        val tmp = cardOrder[idx]
+        cardOrder[idx] = cardOrder[to]
+        cardOrder[to] = tmp
+        saveCardOrder()
+        renderGrid()
+    }
+
+    /** Toggles arrange mode (long-press any quick card). */
+    private fun toggleArrangeMode() {
+        arrangeMode = !arrangeMode
+        a.toast(
+            if (arrangeMode) L.t("Arrange mode on — use ▲▼ to move cards. Long-press again to finish.", "সাজানোর মোড চালু — ▲▼ দিয়ে কার্ড সরাও। আবার লং-প্রেস করলে বন্ধ হবে।")
+            else L.t("Arrange mode off", "সাজানো শেষ")
+        )
+        renderGrid()
     }
 
     /** ব্যাজের পুরো গ্রিড (ডায়ালগের ভেতরে দেখানোর জন্য)। */
@@ -1513,11 +1596,58 @@ class StatsScreen(private val a: MainActivity) {
                 ), 13f, C.muted
             ), lp(MATCH, WRAP, t = a.dp(4))
         )
+        c.addView(a.tv(attemptsTodayLine(), 13f, C.muted), lp(MATCH, WRAP, t = a.dp(8)))
         wrap.addView(c, lp(MATCH, WRAP))
         val shareBtn = a.primaryBtn(L.t("Share my focus card", "আমার ফোকাস কার্ড শেয়ার করুন"))
         shareBtn.setOnClickListener { FocusCardShare.share(a) }
         wrap.addView(shareBtn, lp(MATCH, a.dp(52), t = a.dp(12)))
         return wrap
+    }
+
+    /** Today's blocked attempts, by kind (only kinds that fired today). */
+    private fun attemptsTodayLine(): String {
+        val list = Extra.attempts(a)
+        val today = Store.dayStart(System.currentTimeMillis(), 0)
+        var nToday = 0
+        var nPower = 0
+        var nSettings = 0
+        var nFocus = 0
+        var nAppBlock = 0
+        var nReels = 0
+        var nMsgSearch = 0
+        var nLimit = 0
+        var nSite = 0
+        var nUninstall = 0
+        for ((t, k) in list) {
+            if (t < today) continue
+            nToday++
+            when (k) {
+                "power" -> nPower++
+                "settings" -> nSettings++
+                "appblock" -> nAppBlock++
+                "reels" -> nReels++
+                "msgsearch" -> nMsgSearch++
+                "limit" -> nLimit++
+                "uninstall" -> nUninstall++
+                "site", "url", "kw_url", "kw_typed", "kw_visible" -> nSite++
+                else -> nFocus++
+            }
+        }
+        if (nToday == 0) return L.t("No blocks resisted today yet.", "আজ এখনো কোনো চেষ্টা আটকানো হয়নি।")
+        val parts = ArrayList<String>()
+        fun add(n: Int, label: String) {
+            if (n > 0) parts.add(label + " " + L.num(n.toString()))
+        }
+        add(nPower, L.t("Power menu", "পাওয়ার মেনু"))
+        add(nSettings, L.t("Settings", "সেটিংস"))
+        add(nFocus, L.t("Focus apps", "ফোকাস অ্যাপ"))
+        add(nAppBlock, L.t("App block", "অ্যাপ ব্লক"))
+        add(nReels, L.t("Reels", "রিলস"))
+        add(nMsgSearch, L.t("Search", "সার্চ"))
+        add(nLimit, L.t("Daily limit", "দৈনিক লিমিট"))
+        add(nSite, L.t("Site", "সাইট"))
+        add(nUninstall, L.t("Uninstall", "আনইনস্টল"))
+        return L.t("Blocked today: ", "আজ আটকানো: ") + L.num(nToday.toString()) + " · " + parts.joinToString(" · ")
     }
 
     /** Last-7-days bar chart, built fresh on every open. */
