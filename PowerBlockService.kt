@@ -629,35 +629,37 @@ class PowerBlockService : AccessibilityService() {
     }
 
     /**
-     * Uninstall protection (instant, no lock needed): the installer — or a
-     * system screen such as App info — is showing an uninstall confirmation
-     * for a protected app ("Uninstall" + the app's name in the window text).
-     * The block fires the moment the dialog appears: no 300 ms wait like
-     * [onGuarded], only a 1 s dedup against repeats. The user asked for this
-     * to be instant because uninstall is the sensitive one. Note this also
-     * sends Home from a protected app's App info page, since that page
-     * carries the same "Uninstall" button — that is part of the protection.
+     * Uninstall protection (instant, no lock needed): a protected app's
+     * uninstall confirmation is showing ("Uninstall" + the app's name).
+     * This runs for ANY foreground package — the dialog's host is not
+     * fixed: on Vivo the long-press uninstall sheet can come from the
+     * installer or from the launcher itself, so restricting it to the
+     * guarded packages missed it entirely. The text match is the guard:
+     * it needs BOTH the word "Uninstall" and a protected app's label, so
+     * ordinary screens do not fire. The block fires the moment the dialog
+     * appears: no 300 ms wait like [onGuarded], only a 1 s dedup against
+     * repeats. Note this also sends Home from a protected app's App info
+     * page (and its Play Store page), since those carry the same
+     * "Uninstall" button — that is part of the protection.
      */
     private fun onUninstallAttempt(e: AccessibilityEvent) {
         val type = e.eventType
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) return
-        val pkg = e.packageName?.toString() ?: return
-        if (!isGuarded(pkg)) return
         val now = SystemClock.uptimeMillis()
         if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUninstallScan < 200) return
         lastUninstallScan = now
         val labels = uninstallProtectLabels()
         if (labels.isEmpty()) return
         val root = rootInActiveWindow ?: return
-        val sb = StringBuilder()
-        collectVisibleText(root, sb)
-        if (sb.isEmpty()) return
-        val t = sb.toString()
-        val hasUninstallWord = t.contains("Uninstall", ignoreCase = true) || t.contains("আনইনস্টল")
+        // the uninstall confirmation shows "Uninstall" and the app's name
+        val hasUninstallWord = root.findAccessibilityNodeInfosByText("Uninstall").isNotEmpty() ||
+                root.findAccessibilityNodeInfosByText("আনইনস্টল").isNotEmpty()
         if (!hasUninstallWord) return
-        val hit = labels.entries.firstOrNull { (_, label) -> t.contains(label) } ?: return
+        val hit = labels.entries.firstOrNull { (_, label) ->
+            root.findAccessibilityNodeInfosByText(label).isNotEmpty()
+        } ?: return
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", hit.key, hit.value)
