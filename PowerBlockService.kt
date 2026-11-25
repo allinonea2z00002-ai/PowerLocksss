@@ -322,10 +322,6 @@ class PowerBlockService : AccessibilityService() {
     private val hideTask = Runnable { hideOverlay() }
     private val backAgain = Runnable { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) }
     private val backAgain2 = Runnable { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) }
-    // Uninstall block: a second Back shortly after the first, so the
-    // protected Store page is really popped off the back stack and is
-    // not there again when the user re-enters the Play Store.
-    private val uninstallBackAgain = Runnable { performGlobalAction(GLOBAL_ACTION_BACK) }
     private var lastWinScan = 0L
     private var receiverOn = false
 
@@ -817,13 +813,14 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
-        // Back (not Home): step back from the protected Store page /
-        // dismiss the uninstall dialog, so the page is popped off the
-        // back stack and is not there again when the user re-enters the
-        // Play Store. A second Back 300 ms later makes sure it is gone.
+        // Home + Back, both inside 5 ms: first step back from the protected
+        // Store page / dismiss the dialog so the page is popped off the
+        // back stack and is not there on re-entry, then kick to the home
+        // screen at once. (Back must go first internally: once on Home, a
+        // Back press can no longer reach the Store page. The user only sees
+        // themself on Home, with the page gone.)
         performGlobalAction(GLOBAL_ACTION_BACK)
-        handler.removeCallbacks(uninstallBackAgain)
-        handler.postDelayed(uninstallBackAgain, 300)
+        performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
