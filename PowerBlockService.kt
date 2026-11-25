@@ -762,9 +762,9 @@ class PowerBlockService : AccessibilityService() {
             // screen reads "Uninstall" + "Open"; on the confirm dialog it
             // reads "Uninstall this app?" + "Cancel" + "Uninstall". Text
             // only — no node/button hunting, which is what kept missing
-            // the Store's Compose buttons. Throttled to twice a second
-            // so scrolling the Store stays smooth.
-            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 500) {
+            // the Store's Compose buttons. Scanned every 100 ms so the
+            // page is blocked the instant it appears, not after a wait.
+            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 100) {
                 lastPlayStoreScan = now
                 val sb = StringBuilder()
                 collectVisibleText(root, sb)
@@ -813,9 +813,9 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
-        // Back, not Home: dismiss the uninstall dialog / step back from the
-        // Store page instead of kicking the user to the home screen.
-        performGlobalAction(GLOBAL_ACTION_BACK)
+        // Home again (old rule): the Back press was too slow, so kick the
+        // user to the home screen the instant an uninstall is detected.
+        performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
