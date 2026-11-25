@@ -813,7 +813,9 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        // Back, not Home: dismiss the uninstall dialog / step back from the
+        // Store page instead of kicking the user to the home screen.
+        performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
