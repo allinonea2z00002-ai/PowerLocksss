@@ -330,16 +330,15 @@ class PowerBlockService : AccessibilityService() {
     // would crash the whole service process (Android then shows
     // "This service is malfunctioning").
     private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
-    // Build 106: the uninstall block screen is REMOVED. It was fine up to
-    // build 90 (Back only, no overlay), but build 100's full-screen block
-    // overlay is what broke the service: the overlay is a WindowManager
-    // window, and when Vivo force-stops the app on a Recents swipe the
-    // process dies with the overlay still attached — Android then marks
-    // the service "malfunctioning". Builds 101–105 tried to work around
-    // it (scan timing, 3 s auto-hide, FGS type) without fixing it. The
-    // uninstall block is back to Back only, like build 90 — no overlay,
-    // no limitBlockActive, nothing to leak. The detection (text trick,
-    // dialog check, 200 ms dedup, 10 ms scan) is unchanged.
+    // Build 107 "not working" fix (1 of 3): the uninstall block screen
+    // auto-hides after 3 s. The screen is a WindowManager overlay, and
+    // when Vivo force-stops the app on a Recents swipe the process dies
+    // abruptly (no onDestroy, no cleanup) with the overlay still attached
+    // — Android then marks the service "malfunctioning" and the app's
+    // work stops. A 3 s auto-hide means the overlay is never attached
+    // for long, so there is normally nothing to leak when the app is
+    // swiped away.
+    private val uninstallOverlayHide = Runnable { try { hideBlockOverlay() } catch (_: Exception) { } }
 
     // Crash catcher: if the service process ever dies from an uncaught
     // exception, Android shows "This service is malfunctioning" / "Not
@@ -857,14 +856,33 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastUninstallBlock < 200) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
-        // Build 106: NO block screen here (see the note above
-        // uninstallOverlayHide). The uninstall is blocked by pressing
-        // Back 300 ms later, like build 90 — the Play Store page /
-        // dialog goes back and the uninstall cannot complete. No
-        // overlay is attached, so there is nothing to leak when Vivo
-        // force-stops the app on a Recents swipe.
+        // Instant block screen, like the power-menu shield: the screen covers
+        // the uninstall UI at once, with the protected app's name and a
+        // "হোমে ফিরুন" button. Back is pressed 300 ms AFTER the screen
+        // appears (not at once), so the screen is fully visible first and
+        // the Back happens underneath it — the Play Store page / dialog goes
+        // back behind the overlay. No automatic Home — that would hide the
+        // screen at once; the user taps the button to go Home.
+        // limitBlockActive keeps the screen up without a lock (same as a
+        // daily-limit block). The whole block action is try-caught: a throw
+        // here would kill the service and Android would show
+        // "This service is malfunctioning" — the block must never crash.
+        limitBlockActive = true
+        try {
+            showBlockOverlay(pkg, L.t("Uninstall is blocked", "আনইনস্টল ব্লক করা আছে"), labels[target] ?: target)
+        } catch (ex: Exception) {
+            Log.e(TAG, "uninstall block overlay failed", ex)
+            // overlay failed: still block with Back so the uninstall cannot complete
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
         handler.removeCallbacks(uninstallBack)
         handler.postDelayed(uninstallBack, 300)
+        // Auto-hide the screen after 3 s: the user has seen it and the page
+        // has gone back behind it, so the overlay must not stay attached
+        // indefinitely (see the note above uninstallOverlayHide).
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
@@ -2453,6 +2471,20 @@ class PowerBlockService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
+
+    // Build 107 "not working" fix (2 of 3): the app was just swiped away
+    // from Recents. Hide the block overlay RIGHT NOW — do not wait for
+    // the 3 s auto-hide. If the user swipes within 3 s of an uninstall
+    // block, the overlay is still up, and when Vivo then force-stops
+    // the process the overlay leaks and Android marks the service
+    // "malfunctioning" (then the app's work stops). Hiding it here
+    // closes that gap. onDestroy/onUnbind may never run on a force-stop,
+    // but onTaskRemoved runs on a Recents swipe.
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        try { hideBlockOverlay() } catch (_: Exception) { }
+        try { hideOverlay() } catch (_: Exception) { }
+        super.onTaskRemoved(rootIntent)
+    }
 
     override fun onUnbind(intent: Intent?): Boolean {
         try { cleanup() } catch (ex: Exception) { Log.e(TAG, "onUnbind cleanup failed", ex) }
