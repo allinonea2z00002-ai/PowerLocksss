@@ -780,28 +780,30 @@ class PowerBlockService : AccessibilityService() {
                         }
                     }
                     // The confirm dialog: "Uninstall this app?" + "Cancel".
-                    // It names no app, so it is blocked from the remembered page.
-                    if (hitPkg == null) {
+                    // It names no app, so it is blocked from the remembered
+                    // page — or, if the user tapped Uninstall before the page
+                    // scan could remember the label, from the label right
+                    // here in the current text.
+                    if (hitPkg == null && pageText.contains("uninstallthisapp") && pageText.contains("cancel")) {
                         val fresh = lastPlayStoreProtectedPkg != null &&
                             now - lastPlayStoreProtectedAt < 60000
-                        if (fresh && pageText.contains("uninstallthisapp") && pageText.contains("cancel")) {
-                            hitPkg = lastPlayStoreProtectedPkg
-                        }
+                        hitPkg = if (fresh) lastPlayStoreProtectedPkg
+                            else playStorePagePkg(pageText, labels)
                     }
                 }
             }
         } else {
             // The same dialog can come from the installer instead of the
-            // Store — same words, blocked from the remembered page.
-            val fresh = lastPlayStoreProtectedPkg != null &&
-                now - lastPlayStoreProtectedAt < 60000
-            if (fresh) {
-                val sb = StringBuilder()
-                collectVisibleText(root, sb)
-                val pageText = normaliseName(sb.toString())
-                if (pageText.contains("uninstallthisapp") && pageText.contains("cancel")) {
-                    hitPkg = lastPlayStoreProtectedPkg
-                }
+            // Store — same words, blocked from the remembered page, or from
+            // the label in the current text if the page was never remembered.
+            val sb = StringBuilder()
+            collectVisibleText(root, sb)
+            val pageText = normaliseName(sb.toString())
+            if (pageText.contains("uninstallthisapp") && pageText.contains("cancel")) {
+                val fresh = lastPlayStoreProtectedPkg != null &&
+                    now - lastPlayStoreProtectedAt < 60000
+                hitPkg = if (fresh) lastPlayStoreProtectedPkg
+                    else playStorePagePkg(pageText, labels)
             }
             // System uninstall dialog / App info: the dialog title names
             // the app (Uninstall "BlockP"?).
@@ -810,7 +812,8 @@ class PowerBlockService : AccessibilityService() {
             }
         }
         val target = hitPkg ?: return
-        if (now - lastUninstallBlock < 1000) return
+        // 200 ms dedup (was 1000 ms): a fast re-tap must be blocked too.
+        if (now - lastUninstallBlock < 200) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
         // Home + Back, both inside 5 ms: first step back from the protected
