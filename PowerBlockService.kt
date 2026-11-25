@@ -762,9 +762,9 @@ class PowerBlockService : AccessibilityService() {
             // screen reads "Uninstall" + "Open"; on the confirm dialog it
             // reads "Uninstall this app?" + "Cancel" + "Uninstall". Text
             // only — no node/button hunting, which is what kept missing
-            // the Store's Compose buttons. Scanned every 100 ms so the
+            // the Store's Compose buttons. Scanned every 10 ms so the
             // page is blocked the instant it appears, not after a wait.
-            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 100) {
+            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 10) {
                 lastPlayStoreScan = now
                 val sb = StringBuilder()
                 collectVisibleText(root, sb)
