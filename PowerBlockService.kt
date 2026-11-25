@@ -762,11 +762,12 @@ class PowerBlockService : AccessibilityService() {
             // screen reads "Uninstall" + "Open"; on the confirm dialog it
             // reads "Uninstall this app?" + "Cancel" + "Uninstall". Text
             // only — no node/button hunting, which is what kept missing
-            // the Store's Compose buttons. Scanned every 5 ms — the lowest
-            // possible, matching the 5 ms event throttle. Below 5 ms is
-            // pointless: Android itself needs a few ms to deliver the
-            // screen-change event and for the Store to load its text.
-            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 5) {
+            // the Store's Compose buttons. Scanned every 100 ms: 5 ms was
+            // too aggressive — collecting the whole page text that often
+            // made the Play Store stutter, which itself delayed the page
+            // loading and the block. 100 ms still catches the page within
+            // a blink of the Uninstall button appearing.
+            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 100) {
                 lastPlayStoreScan = now
                 val sb = StringBuilder()
                 collectVisibleText(root, sb)
