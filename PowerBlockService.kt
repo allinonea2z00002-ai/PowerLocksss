@@ -320,13 +320,35 @@ class PowerBlockService : AccessibilityService() {
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> readState() }
     private val hideTask = Runnable { hideOverlay() }
-    private val backAgain = Runnable { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) }
-    private val backAgain2 = Runnable { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) }
+    private val backAgain = Runnable { try { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+    private val backAgain2 = Runnable { try { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     // Uninstall block: Back is pressed 300 ms AFTER the block screen is
     // shown, so the screen is fully visible first and the Back happens
     // underneath it (behind the overlay). No protecting() gate — the
     // uninstall block works with no lock, like the block screen itself.
-    private val uninstallBack = Runnable { performGlobalAction(GLOBAL_ACTION_BACK) }
+    // Each Runnable is try-caught: a throw here runs on the main thread and
+    // would crash the whole service process (Android then shows
+    // "This service is malfunctioning").
+    private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+
+    // Crash catcher: if the service process ever dies from an uncaught
+    // exception, Android shows "This service is malfunctioning" / "Not
+    // working" and the block stops. Record the crash in the Diagnostics
+    // log (kind "crash") so the exact cause is visible, then let Android
+    // handle the crash as usual. Installed once.
+    private var crashCatcherInstalled = false
+    private fun installCrashCatcher() {
+        if (crashCatcherInstalled) return
+        crashCatcherInstalled = true
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                val detail = (throwable::class.java.simpleName + ": " + (throwable.message ?: "")).take(120)
+                Extra.logAttempt(this, "crash", packageName, detail)
+            } catch (_: Exception) { }
+            prev?.uncaughtException(thread, throwable)
+        }
+    }
     private var lastWinScan = 0L
     private var receiverOn = false
 
@@ -346,6 +368,7 @@ class PowerBlockService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         try {
+            installCrashCatcher() // record any future crash in Diagnostics (kind "crash")
             L.load(this)
             readState()
             refreshBrowsers() // discover this phone's browsers before events flow
@@ -767,12 +790,12 @@ class PowerBlockService : AccessibilityService() {
             // screen reads "Uninstall" + "Open"; on the confirm dialog it
             // reads "Uninstall this app?" + "Cancel" + "Uninstall". Text
             // only — no node/button hunting, which is what kept missing
-            // the Store's Compose buttons. Scanned every 100 ms: 5 ms was
-            // too aggressive — collecting the whole page text that often
-            // made the Play Store stutter, which itself delayed the page
-            // loading and the block. 100 ms still catches the page within
-            // a blink of the Uninstall button appearing.
-            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 100) {
+            // the Store's Compose buttons. Scanned every 10 ms (was 100 ms:
+            // 100 ms stopped the stutter but the user wants the block as
+            // fast as possible; 5 ms caused the stutter, 10 ms is the
+            // compromise — fast enough to catch the page the instant its
+            // Uninstall button appears, light enough not to lag the Store).
+            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 10) {
                 lastPlayStoreScan = now
                 val sb = StringBuilder()
                 collectVisibleText(root, sb)
@@ -832,9 +855,18 @@ class PowerBlockService : AccessibilityService() {
         // back behind the overlay. No automatic Home — that would hide the
         // screen at once; the user taps the button to go Home.
         // limitBlockActive keeps the screen up without a lock (same as a
-        // daily-limit block).
+        // daily-limit block). The whole block action is try-caught: a throw
+        // here would kill the service and Android would show
+        // "This service is malfunctioning" — the block must never crash.
         limitBlockActive = true
-        showBlockOverlay(pkg, L.t("Uninstall is blocked", "আনইনস্টল ব্লক করা আছে"), labels[target] ?: target)
+        try {
+            showBlockOverlay(pkg, L.t("Uninstall is blocked", "আনইনস্টল ব্লক করা আছে"), labels[target] ?: target)
+        } catch (ex: Exception) {
+            Log.e(TAG, "uninstall block overlay failed", ex)
+            // overlay failed: still block with Back so the uninstall cannot complete
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
         handler.removeCallbacks(uninstallBack)
         handler.postDelayed(uninstallBack, 300)
     }
@@ -985,8 +1017,10 @@ class PowerBlockService : AccessibilityService() {
         blockOverlayMsg = msg
         val btn = primaryBtn(L.t("Back to Home", "হোমে ফিরুন"))
         btn.setOnClickListener {
-            hideBlockOverlay()
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            try {
+                hideBlockOverlay()
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            } catch (_: Exception) { }
         }
         root.addView(btn, lp(MATCH, dp(52), t = dp(12)))
         blockOverlay = root
@@ -2425,12 +2459,12 @@ class PowerBlockService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onUnbind(intent: Intent?): Boolean {
-        cleanup()
+        try { cleanup() } catch (ex: Exception) { Log.e(TAG, "onUnbind cleanup failed", ex) }
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
-        cleanup()
+        try { cleanup() } catch (ex: Exception) { Log.e(TAG, "onDestroy cleanup failed", ex) }
         super.onDestroy()
     }
 }
