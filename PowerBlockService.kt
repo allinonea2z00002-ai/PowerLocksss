@@ -322,6 +322,11 @@ class PowerBlockService : AccessibilityService() {
     private val hideTask = Runnable { hideOverlay() }
     private val backAgain = Runnable { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) }
     private val backAgain2 = Runnable { if (protecting()) performGlobalAction(GLOBAL_ACTION_BACK) }
+    // Uninstall block: Back is pressed 300 ms AFTER the block screen is
+    // shown, so the screen is fully visible first and the Back happens
+    // underneath it (behind the overlay). No protecting() gate — the
+    // uninstall block works with no lock, like the block screen itself.
+    private val uninstallBack = Runnable { performGlobalAction(GLOBAL_ACTION_BACK) }
     private var lastWinScan = 0L
     private var receiverOn = false
 
@@ -821,13 +826,17 @@ class PowerBlockService : AccessibilityService() {
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
         // Instant block screen, like the power-menu shield: the screen covers
         // the uninstall UI at once, with the protected app's name and a
-        // "হোমে ফিরুন" button. Back dismisses the dialog / steps back from
-        // the Store page. No automatic Home — that would hide the screen at
-        // once; the user taps the button to go Home. limitBlockActive keeps
-        // the screen up without a lock (same as a daily-limit block).
+        // "হোমে ফিরুন" button. Back is pressed 300 ms AFTER the screen
+        // appears (not at once), so the screen is fully visible first and
+        // the Back happens underneath it — the Play Store page / dialog goes
+        // back behind the overlay. No automatic Home — that would hide the
+        // screen at once; the user taps the button to go Home.
+        // limitBlockActive keeps the screen up without a lock (same as a
+        // daily-limit block).
         limitBlockActive = true
         showBlockOverlay(pkg, L.t("Uninstall is blocked", "আনইনস্টল ব্লক করা আছে"), labels[target] ?: target)
-        performGlobalAction(GLOBAL_ACTION_BACK)
+        handler.removeCallbacks(uninstallBack)
+        handler.postDelayed(uninstallBack, 300)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
