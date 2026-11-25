@@ -818,14 +818,15 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastUninstallBlock < 200) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
-        // Home + Back, both inside 5 ms: first step back from the protected
-        // Store page / dismiss the dialog so the page is popped off the
-        // back stack and is not there on re-entry, then kick to the home
-        // screen at once. (Back must go first internally: once on Home, a
-        // Back press can no longer reach the Store page. The user only sees
-        // themself on Home, with the page gone.)
+        // Instant block screen, like the power-menu shield: the screen covers
+        // the uninstall UI at once, with the protected app's name and a
+        // "হোমে ফিরুন" button. Back dismisses the dialog / steps back from
+        // the Store page. No automatic Home — that would hide the screen at
+        // once; the user taps the button to go Home. limitBlockActive keeps
+        // the screen up without a lock (same as a daily-limit block).
+        limitBlockActive = true
+        showBlockOverlay(pkg, L.t("Uninstall is blocked", "আনইনস্টল ব্লক করা আছে"), labels[target] ?: target)
         performGlobalAction(GLOBAL_ACTION_BACK)
-        performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
