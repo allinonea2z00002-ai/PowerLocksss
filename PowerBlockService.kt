@@ -330,6 +330,16 @@ class PowerBlockService : AccessibilityService() {
     // would crash the whole service process (Android then shows
     // "This service is malfunctioning").
     private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+    // The uninstall block screen auto-hides after 3 s. Before build 100 the
+    // uninstall block never attached a persistent overlay (only Home/Back),
+    // so there was nothing to leak — that is why Recents-swipe never broke
+    // the service before. Build 100's screen stays up indefinitely
+    // (limitBlockActive), and when Vivo force-stops the app on a Recents
+    // swipe the process dies abruptly (no onDestroy, no cleanup) with the
+    // overlay still attached — Android then marks the service
+    // "malfunctioning". A 3 s auto-hide means the overlay is never attached
+    // for long, so there is nothing to leak when the app is swiped away.
+    private val uninstallOverlayHide = Runnable { try { hideBlockOverlay() } catch (_: Exception) { } }
 
     // Crash catcher: if the service process ever dies from an uncaught
     // exception, Android shows "This service is malfunctioning" / "Not
@@ -869,6 +879,12 @@ class PowerBlockService : AccessibilityService() {
         }
         handler.removeCallbacks(uninstallBack)
         handler.postDelayed(uninstallBack, 300)
+        // Auto-hide the screen after 3 s: the user has seen it and the page
+        // has gone back behind it, so the overlay must not stay attached
+        // indefinitely (a persistent overlay leaks when Vivo force-stops
+        // the app on a Recents swipe and marks the service malfunctioning).
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
     }
 
     private fun onFocusApp(e: AccessibilityEvent) {
