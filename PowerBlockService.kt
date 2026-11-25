@@ -180,6 +180,12 @@ class PowerBlockService : AccessibilityService() {
     private var uninstallProtectLabels: Map<String, String> = emptyMap()
     private var lastUninstallScan = 0L
     private var lastUninstallBlock = 0L
+    // Play Store uninstall (build 92, the user's text trick): remember which
+    // protected app's Store page was open, so the generic "Uninstall this
+    // app?" dialog — which names no app — can still be blocked.
+    private var lastPlayStoreProtectedPkg: String? = null
+    private var lastPlayStoreProtectedAt = 0L
+    private var lastPlayStoreScan = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -650,6 +656,28 @@ class PowerBlockService : AccessibilityService() {
      * The label is read from the title node directly, so no full-window
      * text collection is needed here (that was the slow part).
      */
+    // Normalise for text matching: lowercase, letters and digits only.
+    // "X Browser -Light & Super fast" becomes "xbrowserlightsuperfast",
+    // so the installed label "XBrowser" matches the Store listing name.
+    private fun normaliseName(s: String): String {
+        val sb = StringBuilder()
+        for (ch in s) {
+            if (ch.isLetterOrDigit()) sb.append(ch.lowercaseChar())
+        }
+        return sb.toString()
+    }
+
+    // Protected app whose name appears anywhere in the normalised page text,
+    // or null. Used to REMEMBER which protected app's Store page is open,
+    // so the generic "Uninstall this app?" dialog can be blocked later.
+    private fun playStorePagePkg(pageText: String, labels: Map<String, String>): String? {
+        for ((pkg, label) in labels) {
+            val normLabel = normaliseName(label)
+            if (normLabel.length >= 3 && pageText.contains(normLabel)) return pkg
+        }
+        return null
+    }
+
     private fun findUninstallTarget(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
         var buttonFound = false
         var hitPkg: String? = null
@@ -721,11 +749,70 @@ class PowerBlockService : AccessibilityService() {
         val labels = uninstallProtectLabels()
         if (labels.isEmpty()) return
         val root = rootInActiveWindow ?: return
-        // Button + dialog-title gates, one pass (see findUninstallTarget).
-        val hitPkg = findUninstallTarget(root, labels) ?: return
+        // Forget the Play Store page once the user has left the Store and
+        // is not in an installer dialog.
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pkg != "com.android.vending" &&
+            !pkg.contains("packageinstaller") && !pkg.contains("installer")
+        ) {
+            lastPlayStoreProtectedPkg = null
+        }
+        var hitPkg: String? = null
+        if (pkg == "com.android.vending") {
+            // User's trick (build 92): on a protected app's Store page the
+            // screen reads "Uninstall" + "Open"; on the confirm dialog it
+            // reads "Uninstall this app?" + "Cancel" + "Uninstall". Text
+            // only — no node/button hunting, which is what kept missing
+            // the Store's Compose buttons. Throttled to twice a second
+            // so scrolling the Store stays smooth.
+            if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastPlayStoreScan >= 500) {
+                lastPlayStoreScan = now
+                val sb = StringBuilder()
+                collectVisibleText(root, sb)
+                if (sb.isNotEmpty()) {
+                    val pageText = normaliseName(sb.toString())
+                    val pagePkg = playStorePagePkg(pageText, labels)
+                    if (pagePkg != null) {
+                        lastPlayStoreProtectedPkg = pagePkg
+                        lastPlayStoreProtectedAt = now
+                        // The app's page: its name + "Uninstall" + "Open".
+                        if (pageText.contains("uninstall") && pageText.contains("open")) {
+                            hitPkg = pagePkg
+                        }
+                    }
+                    // The confirm dialog: "Uninstall this app?" + "Cancel".
+                    // It names no app, so it is blocked from the remembered page.
+                    if (hitPkg == null) {
+                        val fresh = lastPlayStoreProtectedPkg != null &&
+                            now - lastPlayStoreProtectedAt < 60000
+                        if (fresh && pageText.contains("uninstallthisapp") && pageText.contains("cancel")) {
+                            hitPkg = lastPlayStoreProtectedPkg
+                        }
+                    }
+                }
+            }
+        } else {
+            // The same dialog can come from the installer instead of the
+            // Store — same words, blocked from the remembered page.
+            val fresh = lastPlayStoreProtectedPkg != null &&
+                now - lastPlayStoreProtectedAt < 60000
+            if (fresh) {
+                val sb = StringBuilder()
+                collectVisibleText(root, sb)
+                val pageText = normaliseName(sb.toString())
+                if (pageText.contains("uninstallthisapp") && pageText.contains("cancel")) {
+                    hitPkg = lastPlayStoreProtectedPkg
+                }
+            }
+            // System uninstall dialog / App info: the dialog title names
+            // the app (Uninstall "BlockP"?).
+            if (hitPkg == null) {
+                hitPkg = findUninstallTarget(root, labels)
+            }
+        }
+        val target = hitPkg ?: return
         if (now - lastUninstallBlock < 1000) return
         lastUninstallBlock = now
-        Extra.logAttempt(this, "uninstall", hitPkg, labels[hitPkg] ?: hitPkg)
+        Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
