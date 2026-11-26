@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "111"
+    const val BUILD_ID = "112"
 
     // ---------- extend time (never reduce) ----------
 
@@ -3562,7 +3562,7 @@ private fun diagReasonLabel(kind: String): String = when (kind) {
     "appblock" -> L.t("App block", "অ্যাপ ব্লক")
     "limit" -> L.t("Daily limit", "দৈনিক লিমিট")
     "uninstall" -> L.t("Uninstall block", "আনইনস্টল ব্লক")
-    "dns" -> L.t("DNS change block", "DNS পরিবর্তন ব্লক"),
+    "dns" -> L.t("DNS change block", "DNS পরিবর্তন ব্লক")
     "user" -> L.t("Guest user block", "Guest ইউজার ব্লক")
     "crash" -> L.t("Service crash", "সার্ভিস ক্র্যাশ")
     "reels" -> L.t("Reels block", "রিলস ব্লক")
