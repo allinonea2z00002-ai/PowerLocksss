@@ -2251,6 +2251,29 @@ class SettingsScreen(private val a: MainActivity) {
             ) { v -> prefs.edit().putBoolean("dns_guard", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
+        // Guest user protection (build 111): a Guest profile has no
+        // PowerLock, so switching to it bypasses every block. Always-on.
+        strictCard.addView(
+            glowOption(
+                L.t("Guest user protection", "Guest ইউজার সুরক্ষা"),
+                L.t("Guest profile cannot be opened — every block stays on.", "Guest প্রোফাইল খোলা যাবে না — সব ব্লক চালু থাকবে।"),
+                prefs.getBoolean("user_guard", true),
+                false
+            ) { v -> prefs.edit().putBoolean("user_guard", v).apply() },
+            lp(MATCH, WRAP, t = a.dp(2))
+        )
+        // Network time check (build 111): the real time from the internet
+        // corrects a changed phone clock after a reboot. One tiny check at
+        // lock start and after a boot — the phone does not slow down.
+        strictCard.addView(
+            glowOption(
+                L.t("Network time check", "নেটওয়ার্ক সময় যাচাই"),
+                L.t("Real time from the internet — a changed clock cannot end a lock early.", "ইন্টারনেট থেকে আসল সময় — বদলানো ঘড়ি লক আগেই শেষ করতে পারবে না।"),
+                prefs.getBoolean("ntp_on", true),
+                false
+            ) { v -> prefs.edit().putBoolean("ntp_on", v).apply() },
+            lp(MATCH, WRAP, t = a.dp(2))
+        )
         val note = if (locked) L.t("Locked while a session is active.", "সেশন চলাকালীন বদলানো যাবে না।")
         else L.t("Changes apply from the next session.", "পরিবর্তন পরের সেশন থেকে কার্যকর হবে।")
         strictCard.addView(a.tv(note, 12f, if (locked) C.warn else C.muted), lp(MATCH, WRAP, t = a.dp(8)))

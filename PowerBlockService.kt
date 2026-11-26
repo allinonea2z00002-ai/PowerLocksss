@@ -194,6 +194,9 @@ class PowerBlockService : AccessibilityService() {
     private var dnsGuardOn = true
     private var lastDnsScan = 0L
     private var lastDnsBlock = 0L
+    private var userGuardOn = true
+    private var lastUserScan = 0L
+    private var lastUserBlock = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -339,6 +342,7 @@ class PowerBlockService : AccessibilityService() {
     // "This service is malfunctioning").
     private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     private val dnsBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+    private val userBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     // Build 107 "not working" fix (1 of 3): the uninstall block screen
     // auto-hides after 3 s. The screen is a WindowManager overlay, and
     // when Vivo force-stops the app on a Recents swipe the process dies
@@ -389,6 +393,7 @@ class PowerBlockService : AccessibilityService() {
             installCrashCatcher() // record any future crash in Diagnostics (kind "crash")
             L.load(this)
             readState()
+            NtpTime.sync(this) // fresh network-time offset after a boot (build 111)
             refreshBrowsers() // discover this phone's browsers before events flow
             loadUsage()
             Store.lock(this).registerOnSharedPreferenceChangeListener(prefsListener)
@@ -450,6 +455,7 @@ class PowerBlockService : AccessibilityService() {
         val st = Store.settings(this)
         focusOn = st.getBoolean("focus_on", false)
         dnsGuardOn = st.getBoolean("dns_guard", true) // DNS change block (build 108): always-on
+        userGuardOn = st.getBoolean("user_guard", true) // Guest user block (build 111): always-on
         focusApps = (st.getString("focus_apps", "") ?: "").split(",").filter { it.isNotEmpty() }.toSet()
         abOn = st.getBoolean("ab_on", true)
         abFull = Extra.appBlockFull(this)
@@ -533,6 +539,9 @@ class PowerBlockService : AccessibilityService() {
             // DNS change block (build 108): always-on, like uninstall
             // protection — changing Private DNS would bypass the filter.
             onDnsGuard(e)
+            // Guest user block (build 111): always-on, like DNS — a Guest
+            // profile has no PowerLock, so switching to it bypasses every block.
+            onUserGuard(e)
             // URL detection (site block, second option) and keyword block
             // (third option): the browser address bar changed, a browser
             // window just opened, or a page loaded in an already-open tab.
@@ -966,6 +975,51 @@ class PowerBlockService : AccessibilityService() {
         // auto-hide after 3 s (same as the uninstall block screen): the
         // overlay must not stay attached indefinitely, or a Recents swipe
         // leaks it and Android marks the service malfunctioning.
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
+    }
+
+    /**
+     * Guest / second-user block (build 111): a Guest profile has no
+     * PowerLock, so switching to it bypasses every block. The Multiple
+     * users page (Settings) is where a Guest is added — block it, and the
+     * user switcher that shows the same list. Match detail-page-only
+     * text: the bare "Multiple users" row on the System list page has no
+     * Guest entry or Add-user button, so it is NOT blocked. Runs for any
+     * package (the switcher lives in SystemUI, not Settings).
+     */
+    private fun onUserGuard(e: AccessibilityEvent) {
+        if (!userGuardOn) return
+        val pkg = e.packageName?.toString() ?: return
+        if (pkg == packageName) return
+        val type = e.eventType
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) return
+        val now = SystemClock.uptimeMillis()
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastUserScan < 10) return
+        lastUserScan = now
+        val root = rootInActiveWindow ?: return
+        val sb = StringBuilder()
+        collectVisibleText(root, sb)
+        if (sb.isEmpty()) return
+        val pageText = normaliseName(sb.toString())
+        val isUserPage = pageText.contains("multipleusers") &&
+            (pageText.contains("guest") || pageText.contains("adduser"))
+        if (!isUserPage) return
+        if (now - lastUserBlock < 200) return
+        lastUserBlock = now
+        Extra.logAttempt(this, "user", pkg, "Guest user")
+        limitBlockActive = true
+        try {
+            showBlockOverlay(pkg, L.t("Guest user is blocked", "Guest ইউজার ব্লক করা আছে"), L.t("Multiple users", "Multiple users"))
+        } catch (ex: Exception) {
+            Log.e(TAG, "user block overlay failed", ex)
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
+        handler.removeCallbacks(userBack)
+        handler.postDelayed(userBack, 100)
         handler.removeCallbacks(uninstallOverlayHide)
         handler.postDelayed(uninstallOverlayHide, 3000)
     }

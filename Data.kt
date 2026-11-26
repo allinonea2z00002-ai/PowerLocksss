@@ -16,6 +16,9 @@ import android.provider.Settings
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
 import java.util.Calendar
 import java.util.Locale
 
@@ -311,11 +314,119 @@ object Dnd {
 
 // ---------- persistent storage ----------
 
+/**
+ * Network time (SNTP, build 111): the real time from the internet, so a
+ * changed phone clock cannot end a lock early after a reboot. One tiny UDP
+ * request to time.google.com — no library, no account, ~1 KB, and it runs
+ * only when needed (lock start, service start after a boot), never
+ * continuously, so the phone does not slow down. Runs on a background
+ * thread; a failed check simply leaves the offset unset and the phone's
+ * clock is used — a failed check never blocks the lock.
+ */
+object NtpTime {
+    private const val NTP_HOST = "time.google.com"
+    private const val NTP_PORT = 123
+    private const val TIMEOUT_MS = 3000
+    private const val NTP_EPOCH_OFFSET = 2208988800L // seconds 1900 -> 1970
+
+    @Volatile private var syncing = false
+
+    fun sync(ctx: Context) {
+        if (syncing) return
+        syncing = true
+        Thread {
+            try {
+                val offset = queryOffset()
+                if (offset != null) {
+                    Store.lock(ctx).edit()
+                        .putLong("ntp_offset", offset)
+                        .putLong("ntp_elapsed", SystemClock.elapsedRealtime())
+                        .putLong("ntp_at", System.currentTimeMillis())
+                        .apply()
+                }
+            } catch (_: Exception) {
+            } finally {
+                syncing = false
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
+    /** NTP time minus wall clock, in ms — null when the query fails. */
+    private fun queryOffset(): Long? {
+        val buffer = ByteArray(48)
+        buffer[0] = 0x1B // SNTP v3, client mode
+        val address = InetAddress.getByName(NTP_HOST)
+        val socket = DatagramSocket()
+        socket.soTimeout = TIMEOUT_MS
+        try {
+            val sentAt = System.currentTimeMillis()
+            socket.send(DatagramPacket(buffer, buffer.size, address, NTP_PORT))
+            val response = DatagramPacket(buffer, buffer.size)
+            socket.receive(response)
+            val receivedAt = System.currentTimeMillis()
+            // transmit timestamp: bytes 40-47 (seconds + fraction since 1900)
+            val seconds = ((buffer[40].toLong() and 0xFF) shl 24) or
+                ((buffer[41].toLong() and 0xFF) shl 16) or
+                ((buffer[42].toLong() and 0xFF) shl 8) or
+                (buffer[43].toLong() and 0xFF)
+            val fraction = ((buffer[44].toLong() and 0xFF) shl 24) or
+                ((buffer[45].toLong() and 0xFF) shl 16) or
+                ((buffer[46].toLong() and 0xFF) shl 8) or
+                (buffer[47].toLong() and 0xFF)
+            val ntpMillis = (seconds - NTP_EPOCH_OFFSET) * 1000 +
+                (fraction * 1000L / 0x100000000L)
+            return ntpMillis - (sentAt + receivedAt) / 2
+        } finally {
+            socket.close()
+        }
+    }
+}
+
 object Store {
     fun lock(ctx: Context): SharedPreferences = ctx.getSharedPreferences("lock", Context.MODE_PRIVATE)
     fun settings(ctx: Context): SharedPreferences = ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     fun soundVib(ctx: Context): Boolean = settings(ctx).getBoolean("sound", true)
+
+    /** The NTP offset (network time minus wall clock) when it was measured
+     * on THIS boot, else null. An offset from a previous boot is untrusted:
+     * the clock may have been changed since. */
+    fun ntpOffset(ctx: Context): Long? {
+        if (!settings(ctx).getBoolean("ntp_on", true)) return null
+        val p = lock(ctx)
+        val atElapsed = p.getLong("ntp_elapsed", 0)
+        if (atElapsed <= 0) return null
+        // elapsed time went backwards since the check = a reboot happened
+        if (SystemClock.elapsedRealtime() < atElapsed) return null
+        return p.getLong("ntp_offset", 0)
+    }
+
+    /** The best estimate of the real wall-clock time: the phone's clock
+     * corrected by the network-time offset, when one exists for this boot. */
+    fun realNow(ctx: Context): Long {
+        val off = ntpOffset(ctx)
+        return if (off != null) System.currentTimeMillis() + off else System.currentTimeMillis()
+    }
+
+    /** True when the session's fate rests on the wall clock after a reboot
+     * and no network-time offset exists yet for this boot — the lock must
+     * wait for the network time instead of ending on a possibly-tampered
+     * clock. Gives up after 120 s of uptime without a sync (no internet),
+     * so the lock cannot run forever. */
+    fun needsNtpCheck(ctx: Context): Boolean {
+        if (!settings(ctx).getBoolean("ntp_on", true)) return false
+        val p = lock(ctx)
+        if (!p.getBoolean("active", false)) return false
+        val startElapsed = p.getLong("startElapsed", 0)
+        if (startElapsed <= 0) return false
+        // no reboot: the elapsed clock decides, NTP is irrelevant
+        if (SystemClock.elapsedRealtime() >= startElapsed) return false
+        // fresh offset already? nothing to wait for
+        if (ntpOffset(ctx) != null) return false
+        // give up after 120 s of uptime without a sync (no internet)
+        if (SystemClock.elapsedRealtime() >= 120_000) return false
+        return true
+    }
 
     /**
      * True while the running session's time has not run out — measured on the
@@ -324,7 +435,8 @@ object Store {
      * early: the elapsed clock never jumps when the clock is changed, and it
      * works offline (no internet needed). Falls back to the wall clock for
      * sessions started by an older build, or after a reboot (the elapsed
-     * clock resets at boot, so a backwards jump means reboot).
+     * clock resets at boot, so a backwards jump means reboot). The wall
+     * clock is corrected by the network time when one exists (build 111).
      */
     fun sessionTimeLeft(ctx: Context): Boolean {
         val p = lock(ctx)
@@ -336,7 +448,7 @@ object Store {
             if (nowElapsed >= startElapsed) return nowElapsed < endElapsed
             // reboot since the session started: fall back to the wall clock
         }
-        return System.currentTimeMillis() < p.getLong("end", 0)
+        return realNow(ctx) < p.getLong("end", 0)
     }
 
     fun isActive(ctx: Context): Boolean {
@@ -350,6 +462,13 @@ object Store {
         val p = lock(ctx)
         if (!p.getBoolean("active", false)) return
         val end = p.getLong("end", 0)
+        // Build 111: after a reboot the wall clock is the fallback — but if
+        // the clock was changed, it lies. Wait for the network time instead
+        // of ending the lock on a possibly-tampered clock.
+        if (needsNtpCheck(ctx)) {
+            NtpTime.sync(ctx)
+            return
+        }
         if (sessionTimeLeft(ctx)) return
         val src = p.getString("src", "manual") ?: "manual"
         addSession(ctx, Session(p.getLong("start", end), end, p.getLong("total", 0), true, src))
@@ -458,6 +577,7 @@ object Store {
             clearUnlock(e)
         }
         e.apply()
+        NtpTime.sync(ctx) // fresh network-time offset for this lock (build 111)
         Dnd.apply(ctx) // lock started: silence notifications if the user wants it
         FocusSound.sync(ctx) // lock started: play the chosen focus sound, if any
         SiteBlockService.sync(ctx) // lock started: start the site-block VPN, if enabled
