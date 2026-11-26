@@ -203,9 +203,13 @@ class KeepAliveService : Service() {
         Store.finalizeIfExpired(this)
         SiteBlockService.sync(this) // keep the site-block VPN in step with the lock
         val p = Store.lock(this)
-        val end = p.getLong("end", 0)
-        val now = System.currentTimeMillis()
-        val active = p.getBoolean("active", false) && end > now
+        // Build 113: `active` and every timer/display must use the REAL
+        // remaining time, not the wall clock — changing the phone's clock
+        // made the notification say "Protection is off" and the finish
+        // task fire early while the lock was still really on.
+        val active = Store.isActive(this)
+        val remaining = Store.remainingMs(this)
+        val realEnd = Store.realNow(this) + remaining
 
         val b = Notification.Builder(this, "powerlock")
             .setSmallIcon(smallIcon)
@@ -225,21 +229,21 @@ class KeepAliveService : Service() {
                     b.setContentText(L.t("Opens at ${target.name}", "${target.name} পৌঁছালে খুলবে"))
                 }
                 mode == UNLOCK_EITHER && target != null -> {
-                    b.setContentText(L.t("Ends at ", "শেষ হবে ") + fmtClock(end) + L.t(" or at ${target.name}", " অথবা ${target.name} পৌঁছালে"))
+                    b.setContentText(L.t("Ends at ", "শেষ হবে ") + fmtClock(realEnd) + L.t(" or at ${target.name}", " অথবা ${target.name} পৌঁছালে"))
                         .setUsesChronometer(true)
                         .setChronometerCountDown(true)
                         .setShowWhen(true)
-                        .setWhen(end)
+                        .setWhen(realEnd)
                 }
                 else -> {
-                    b.setContentText(L.t("Ends at ", "শেষ হবে ") + fmtClock(end))
+                    b.setContentText(L.t("Ends at ", "শেষ হবে ") + fmtClock(realEnd))
                         .setUsesChronometer(true)
                         .setChronometerCountDown(true)
                         .setShowWhen(true)
-                        .setWhen(end)
+                        .setWhen(realEnd)
                 }
             }
-            handler.postDelayed(finishTask, end - now)
+            handler.postDelayed(finishTask, remaining)
         } else {
             b.setContentTitle(L.t("PowerLock 2 is ready", "PowerLock 2 প্রস্তুত"))
                 .setContentText(L.t("Protection is off", "প্রটেকশন বন্ধ আছে"))

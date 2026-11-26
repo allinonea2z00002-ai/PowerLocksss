@@ -428,6 +428,23 @@ object Store {
         return true
     }
 
+    /** Real remaining time of the running session in ms — from the elapsed
+     * clock when possible (build 110+), else the NTP-corrected wall clock.
+     * Every countdown display and timer must use this, NOT (end - wall
+     * clock): changing the phone's clock would otherwise show 00:00:00
+     * while the lock is still really on. */
+    fun remainingMs(ctx: Context): Long {
+        val p = lock(ctx)
+        if (!p.getBoolean("active", false)) return 0
+        val endElapsed = p.getLong("endElapsed", 0)
+        val startElapsed = p.getLong("startElapsed", 0)
+        if (endElapsed > 0 && startElapsed > 0) {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            if (nowElapsed >= startElapsed) return (endElapsed - nowElapsed).coerceAtLeast(0)
+        }
+        return (p.getLong("end", 0) - realNow(ctx)).coerceAtLeast(0)
+    }
+
     /**
      * True while the running session's time has not run out — measured on the
      * monotonic elapsed clock (SystemClock.elapsedRealtime), NOT the phone's

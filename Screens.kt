@@ -411,7 +411,11 @@ class HomeScreen(private val a: MainActivity) {
                 previewText.text = L.t("Session in progress · ", "সেশন চলছে · ") +
                     L.t("opens at ${target.name}", "${target.name} পৌঁছালে খুলবে")
             } else {
-                val left = end - now
+                // Build 113: the countdown must use the REAL remaining time
+                // (elapsed/NTP-corrected), not (end - wall clock) — changing
+                // the phone's clock showed 00:00:00 while the lock was
+                // still really on.
+                val left = Store.remainingMs(a)
                 ring.active = true
                 ring.icon = Ic.LOCK
                 ring.main = fmtHms(left)
