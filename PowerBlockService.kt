@@ -94,6 +94,8 @@ class PowerBlockService : AccessibilityService() {
 
     @Volatile
     private var endAt = 0L
+    private var endElapsedAt = 0L
+    private var startElapsedAt = 0L
 
     @Volatile
     private var locProtecting = false // location lock: blocked while at a saved place, no session
@@ -437,10 +439,12 @@ class PowerBlockService : AccessibilityService() {
         val p = Store.lock(this)
         active = p.getBoolean("active", false)
         endAt = p.getLong("end", 0)
+        endElapsedAt = p.getLong("endElapsed", 0)
+        startElapsedAt = p.getLong("startElapsed", 0)
         locProtecting = p.getBoolean("loc_protecting", false)
         // the guard follows the session while one runs (locked at its start); otherwise it
         // follows the live "App settings protection" switch in Settings
-        val sessionOn = active && System.currentTimeMillis() < endAt
+        val sessionOn = active && sessionTimeLeft()
         guardOn = if (sessionOn) p.getBoolean("s_guard", true)
         else Store.settings(this).getBoolean("guard", true)
         val st = Store.settings(this)
@@ -480,7 +484,17 @@ class PowerBlockService : AccessibilityService() {
         }
     }
 
-    private fun protecting(): Boolean = (active && System.currentTimeMillis() < endAt) || locProtecting
+    /** Same real-time check as Store.sessionTimeLeft, from the cached fields:
+     * the elapsed clock never jumps when the phone's date/time is changed. */
+    private fun sessionTimeLeft(): Boolean {
+        if (endElapsedAt > 0 && startElapsedAt > 0) {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            if (nowElapsed >= startElapsedAt) return nowElapsed < endElapsedAt
+        }
+        return System.currentTimeMillis() < endAt
+    }
+
+    private fun protecting(): Boolean = (active && sessionTimeLeft()) || locProtecting
 
     /**
      * The system re-binds this service after the process dies, so it is the one
@@ -2463,7 +2477,7 @@ class PowerBlockService : AccessibilityService() {
         if (isShieldAttached()) return // never more than one shield
         try {
             val v = ensureOverlay()
-            val sessionOn = active && System.currentTimeMillis() < endAt
+            val sessionOn = active && sessionTimeLeft()
             overlaySub?.text = if (locProtecting && !sessionOn) {
                 L.t("Location lock is active", "লোকেশন লক সক্রিয়")
             } else {

@@ -11,6 +11,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import org.json.JSONArray
@@ -316,10 +317,31 @@ object Store {
 
     fun soundVib(ctx: Context): Boolean = settings(ctx).getBoolean("sound", true)
 
+    /**
+     * True while the running session's time has not run out — measured on the
+     * monotonic elapsed clock (SystemClock.elapsedRealtime), NOT the phone's
+     * date/time. Changing the date/time forward can no longer end a lock
+     * early: the elapsed clock never jumps when the clock is changed, and it
+     * works offline (no internet needed). Falls back to the wall clock for
+     * sessions started by an older build, or after a reboot (the elapsed
+     * clock resets at boot, so a backwards jump means reboot).
+     */
+    fun sessionTimeLeft(ctx: Context): Boolean {
+        val p = lock(ctx)
+        if (!p.getBoolean("active", false)) return false
+        val endElapsed = p.getLong("endElapsed", 0)
+        val startElapsed = p.getLong("startElapsed", 0)
+        if (endElapsed > 0 && startElapsed > 0) {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            if (nowElapsed >= startElapsed) return nowElapsed < endElapsed
+            // reboot since the session started: fall back to the wall clock
+        }
+        return System.currentTimeMillis() < p.getLong("end", 0)
+    }
+
     fun isActive(ctx: Context): Boolean {
         finalizeIfExpired(ctx)
-        val p = lock(ctx)
-        return p.getBoolean("active", false) && System.currentTimeMillis() < p.getLong("end", 0)
+        return lock(ctx).getBoolean("active", false) && sessionTimeLeft(ctx)
     }
 
     /** Records the session once when its time is over. Safe to call many times. */
@@ -328,7 +350,7 @@ object Store {
         val p = lock(ctx)
         if (!p.getBoolean("active", false)) return
         val end = p.getLong("end", 0)
-        if (System.currentTimeMillis() < end) return
+        if (sessionTimeLeft(ctx)) return
         val src = p.getString("src", "manual") ?: "manual"
         addSession(ctx, Session(p.getLong("start", end), end, p.getLong("total", 0), true, src))
         val e = p.edit().putBoolean("active", false).putLong("lastDone", end)
@@ -421,6 +443,8 @@ object Store {
             .putBoolean("active", true)
             .putLong("start", now)
             .putLong("end", now + durationMs)
+            .putLong("startElapsed", SystemClock.elapsedRealtime())
+            .putLong("endElapsed", SystemClock.elapsedRealtime() + durationMs)
             .putLong("total", durationMs)
             .putString("src", src)
             .putLong("lastDone", 0)
