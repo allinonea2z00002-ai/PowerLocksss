@@ -915,8 +915,11 @@ class PowerBlockService : AccessibilityService() {
         ) return
         val now = SystemClock.uptimeMillis()
         // content-changed fires constantly while scrolling the Settings
-        // tree — throttle it (state-changed always runs at once)
-        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastDnsScan < 120) return
+        // tree — throttle it to 10 ms (was 120 ms: the page content loads
+        // after the state change, and 120 ms was enough time to tap the
+        // DNS radio before the block fired). State-changed always runs
+        // at once.
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastDnsScan < 10) return
         lastDnsScan = now
         val root = rootInActiveWindow ?: return
         val sb = StringBuilder()
@@ -945,7 +948,7 @@ class PowerBlockService : AccessibilityService() {
             return
         }
         handler.removeCallbacks(dnsBack)
-        handler.postDelayed(dnsBack, 300)
+        handler.postDelayed(dnsBack, 100) // was 300 ms: Back sooner so the DNS page is gone faster
         // auto-hide after 3 s (same as the uninstall block screen): the
         // overlay must not stay attached indefinitely, or a Recents swipe
         // leaks it and Android marks the service malfunctioning.
@@ -1140,8 +1143,14 @@ class PowerBlockService : AccessibilityService() {
         }
         try {
             val v = ensureBlockOverlay()
-            // attach first (label + animation after): the cover must be instant
-            v.alpha = 0f
+            // Build 109: NO fade-in — the screen appears instantly, fully
+            // opaque. The 200 ms fade-in made the block FEEL slow (the page
+            // behind stayed visible while fading), and in that window the
+            // user could change the DNS before the block looked solid.
+            // Touches were already blocked on attach, but the screen must
+            // LOOK instant too. The shield icon is set to full size at
+            // once (no 380 ms pop).
+            v.alpha = 1f
             val wm = getSystemService(WINDOW_SERVICE) as WindowManager
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -1159,15 +1168,10 @@ class PowerBlockService : AccessibilityService() {
             blockOverlaySub?.text = subText
             blockOverlayMsg?.text = blockMsg
             blockOverlayMsg?.visibility = if (blockMsg.isBlank()) View.GONE else View.VISIBLE
-            // entrance: the screen fades in and the shield pops
-            v.animate().alpha(1f).setDuration(200)
-                .setInterpolator(AccelerateDecelerateInterpolator()).start()
             val ic = blockOverlayIcon
             if (ic != null) {
-                ic.scaleX = 0.6f
-                ic.scaleY = 0.6f
-                ic.animate().scaleX(1f).scaleY(1f).setDuration(380)
-                    .setInterpolator(OvershootInterpolator(1.8f)).start()
+                ic.scaleX = 1f
+                ic.scaleY = 1f
             }
         } catch (ex: Exception) {
             Log.e(TAG, "showBlockOverlay failed", ex)
