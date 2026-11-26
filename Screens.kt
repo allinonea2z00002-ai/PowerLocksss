@@ -2238,6 +2238,19 @@ class SettingsScreen(private val a: MainActivity) {
             ) { v -> prefs.edit().putBoolean("guard", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
+        // DNS protection (build 108): Private DNS is the Kahf Guard filter —
+        // changing it would bypass the website block. Always-on (no lock
+        // needed), like uninstall protection — so the toggle is never
+        // disabled during a session (locked = false).
+        strictCard.addView(
+            glowOption(
+                L.t("DNS protection", "DNS সুরক্ষা"),
+                L.t("Private DNS cannot be changed — the filter stays on.", "Private DNS বদলানো যাবে না — ফিল্টার চালু থাকবে।"),
+                prefs.getBoolean("dns_guard", true),
+                false
+            ) { v -> prefs.edit().putBoolean("dns_guard", v).apply() },
+            lp(MATCH, WRAP, t = a.dp(2))
+        )
         val note = if (locked) L.t("Locked while a session is active.", "সেশন চলাকালীন বদলানো যাবে না।")
         else L.t("Changes apply from the next session.", "পরিবর্তন পরের সেশন থেকে কার্যকর হবে।")
         strictCard.addView(a.tv(note, 12f, if (locked) C.warn else C.muted), lp(MATCH, WRAP, t = a.dp(8)))

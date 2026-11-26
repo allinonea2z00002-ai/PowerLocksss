@@ -186,6 +186,12 @@ class PowerBlockService : AccessibilityService() {
     private var lastPlayStoreProtectedPkg: String? = null
     private var lastPlayStoreProtectedAt = 0L
     private var lastPlayStoreScan = 0L
+    // DNS change block (build 108): the phone's Private DNS is the Kahf
+    // Guard filter — changing it would bypass the website block. Always-on,
+    // like uninstall protection (no lock needed). Toggle: "dns_guard".
+    private var dnsGuardOn = true
+    private var lastDnsScan = 0L
+    private var lastDnsBlock = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -330,6 +336,7 @@ class PowerBlockService : AccessibilityService() {
     // would crash the whole service process (Android then shows
     // "This service is malfunctioning").
     private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+    private val dnsBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     // Build 107 "not working" fix (1 of 3): the uninstall block screen
     // auto-hides after 3 s. The screen is a WindowManager overlay, and
     // when Vivo force-stops the app on a Recents swipe the process dies
@@ -438,6 +445,7 @@ class PowerBlockService : AccessibilityService() {
         else Store.settings(this).getBoolean("guard", true)
         val st = Store.settings(this)
         focusOn = st.getBoolean("focus_on", false)
+        dnsGuardOn = st.getBoolean("dns_guard", true) // DNS change block (build 108): always-on
         focusApps = (st.getString("focus_apps", "") ?: "").split(",").filter { it.isNotEmpty() }.toSet()
         abOn = st.getBoolean("ab_on", true)
         abFull = Extra.appBlockFull(this)
@@ -508,6 +516,9 @@ class PowerBlockService : AccessibilityService() {
             // a protected app's uninstall must be blocked instantly even with
             // no lock running.
             onUninstallAttempt(e)
+            // DNS change block (build 108): always-on, like uninstall
+            // protection — changing Private DNS would bypass the filter.
+            onDnsGuard(e)
             // URL detection (site block, second option) and keyword block
             // (third option): the browser address bar changed, a browser
             // window just opened, or a page loaded in an already-open tab.
@@ -881,6 +892,63 @@ class PowerBlockService : AccessibilityService() {
         // Auto-hide the screen after 3 s: the user has seen it and the page
         // has gone back behind it, so the overlay must not stay attached
         // indefinitely (see the note above uninstallOverlayHide).
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
+    }
+
+    /**
+     * DNS change block (build 108, the user's request): if the user opens
+     * the Private DNS settings page — or the Wi-Fi static-IP DNS fields —
+     * block it and go Back. The phone's Private DNS is the Kahf Guard
+     * filter; changing it to Off/Automatic (or another hostname) would
+     * bypass the website block. Always-on, like uninstall protection
+     * (no lock needed). Toggle: "dns_guard" in Settings.
+     */
+    private fun onDnsGuard(e: AccessibilityEvent) {
+        if (!dnsGuardOn) return
+        val pkg = e.packageName?.toString() ?: return
+        if (!pkg.contains("settings")) return
+        if (pkg == packageName) return
+        val type = e.eventType
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) return
+        val now = SystemClock.uptimeMillis()
+        // content-changed fires constantly while scrolling the Settings
+        // tree — throttle it (state-changed always runs at once)
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastDnsScan < 120) return
+        lastDnsScan = now
+        val root = rootInActiveWindow ?: return
+        val sb = StringBuilder()
+        collectVisibleText(root, sb)
+        if (sb.isEmpty()) return
+        val pageText = normaliseName(sb.toString())
+        // Match detail-page-only text. The bare "Private DNS" row also sits
+        // on the Network & internet list — matching it would block the
+        // whole list page. "privatednsprovider" only appears on the Private
+        // DNS detail page (the radio option "Private DNS provider
+        // hostname"), and "dns1" only on the Wi-Fi static-IP form.
+        val isDnsPage = pageText.contains("privatednsprovider") ||
+            pageText.contains("dns1")
+        if (!isDnsPage) return
+        // 200 ms dedup (same as uninstall): a fast re-tap must be blocked too
+        if (now - lastDnsBlock < 200) return
+        lastDnsBlock = now
+        Extra.logAttempt(this, "dns", pkg, "Private DNS")
+        // block screen first, Back 300 ms later — same as the uninstall block
+        limitBlockActive = true
+        try {
+            showBlockOverlay(pkg, L.t("DNS change is blocked", "DNS পরিবর্তন ব্লক করা আছে"), "Private DNS")
+        } catch (ex: Exception) {
+            Log.e(TAG, "dns block overlay failed", ex)
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
+        handler.removeCallbacks(dnsBack)
+        handler.postDelayed(dnsBack, 300)
+        // auto-hide after 3 s (same as the uninstall block screen): the
+        // overlay must not stay attached indefinitely, or a Recents swipe
+        // leaks it and Android marks the service malfunctioning.
         handler.removeCallbacks(uninstallOverlayHide)
         handler.postDelayed(uninstallOverlayHide, 3000)
     }
