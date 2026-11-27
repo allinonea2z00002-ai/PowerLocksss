@@ -2278,6 +2278,20 @@ class SettingsScreen(private val a: MainActivity) {
             ) { v -> prefs.edit().putBoolean("ntp_on", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
+        // New-app install block (build 120): during a lock, a new app cannot
+        // be installed and PowerLock itself cannot be updated — updating it
+        // mid-lock would remove the lock. Updates to other apps, Play Store
+        // installs, and packages on the install allowlist still work.
+        // Lock-gated (only fires while a lock runs).
+        strictCard.addView(
+            glowOption(
+                L.t("New app install block", "নতুন অ্যাপ ইনস্টল ব্লক"),
+                L.t("No new app can be installed and PowerLock cannot be updated during a lock.", "লক চলাকালীন নতুন অ্যাপ ইনস্টল করা যাবে না, PowerLock আপডেট করা যাবে না।"),
+                prefs.getBoolean("install_guard", true),
+                false
+            ) { v -> prefs.edit().putBoolean("install_guard", v).apply() },
+            lp(MATCH, WRAP, t = a.dp(2))
+        )
         val note = if (locked) L.t("Locked while a session is active.", "সেশন চলাকালীন বদলানো যাবে না।")
         else L.t("Changes apply from the next session.", "পরিবর্তন পরের সেশন থেকে কার্যকর হবে।")
         strictCard.addView(a.tv(note, 12f, if (locked) C.warn else C.muted), lp(MATCH, WRAP, t = a.dp(8)))
@@ -2454,6 +2468,7 @@ class ProtectionScreen(private val a: MainActivity) {
         col.addView(a.appBlockModeCard("msg"), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.lockedAppsCard("msg"), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.whitelistCard(), lp(MATCH, WRAP, b = a.dp(12)))
+        col.addView(a.installAllowCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.dailyLimitsCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.appGroupsCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.diagnosticCard(), lp(MATCH, WRAP, b = a.dp(12)))

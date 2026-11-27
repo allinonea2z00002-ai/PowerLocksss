@@ -212,6 +212,12 @@ class PowerBlockService : AccessibilityService() {
     private var userGuardOn = true
     private var lastUserScan = 0L
     private var lastUserBlock = 0L
+    // New-app install block (build 120): during a lock, a new app cannot be
+    // installed and PowerLock itself cannot be updated — updating it mid-lock
+    // would remove the lock. Lock-gated (only fires while protecting()).
+    private var installGuardOn = true
+    private var lastInstallScan = 0L
+    private var lastInstallBlock = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -365,6 +371,7 @@ class PowerBlockService : AccessibilityService() {
     private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     private val dnsBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     private val userBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+    private val installBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     // Build 107 "not working" fix (1 of 3): the uninstall block screen
     // auto-hides after 3 s. The screen is a WindowManager overlay, and
     // when Vivo force-stops the app on a Recents swipe the process dies
@@ -478,6 +485,7 @@ class PowerBlockService : AccessibilityService() {
         focusOn = st.getBoolean("focus_on", false)
         dnsGuardOn = st.getBoolean("dns_guard", true) // DNS change block (build 108): always-on
         userGuardOn = st.getBoolean("user_guard", true) // Guest user block (build 111): always-on
+        installGuardOn = st.getBoolean("install_guard", true) // Install block (build 120): lock-gated
         focusApps = (st.getString("focus_apps", "") ?: "").split(",").filter { it.isNotEmpty() }.toSet()
         abOn = st.getBoolean("ab_on", true)
         abFull = Extra.appBlockFull(this)
@@ -566,6 +574,12 @@ class PowerBlockService : AccessibilityService() {
             // Guest user block (build 111): always-on, like DNS — a Guest
             // profile has no PowerLock, so switching to it bypasses every block.
             onUserGuard(e)
+            // New-app install block (build 120): lock-gated — during a lock
+            // a new app cannot be installed and PowerLock itself cannot be
+            // updated (updating it mid-lock would remove the lock). Play
+            // Store installs are always allowed (they never show the system
+            // installer screen), and updates to other apps are allowed.
+            onInstallGuard(e)
             // URL detection (site block, second option) and keyword block
             // (third option): the browser address bar changed, a browser
             // window just opened, or a page loaded in an already-open tab.
@@ -1048,6 +1062,89 @@ class PowerBlockService : AccessibilityService() {
         }
         handler.removeCallbacks(userBack)
         handler.postDelayed(userBack, 100)
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
+    }
+
+    /**
+     * New-app install block (build 120): during a lock, a new app cannot be
+     * installed and PowerLock itself cannot be updated — updating it mid-lock
+     * would remove the lock (the user caught this hole: build a lock-free
+     * PowerLock update and the lock is gone). Play Store installs are always
+     * allowed (they never show the system installer screen). Updates to
+     * other already-installed apps are allowed — the user's GitHub APKs are
+     * updates — and packages on the install allowlist can be installed or
+     * updated. Lock-gated: only fires while protecting(). Toggle:
+     * "install_guard" in Settings.
+     */
+    private fun onInstallGuard(e: AccessibilityEvent) {
+        if (!installGuardOn) return
+        if (!protecting()) return
+        val pkg = e.packageName?.toString() ?: return
+        if (!pkg.contains("packageinstaller")) return
+        if (pkg == packageName) return
+        val type = e.eventType
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) return
+        val now = SystemClock.uptimeMillis()
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastInstallScan < 10) return
+        lastInstallScan = now
+        val root = rootInActiveWindow ?: return
+        val sb = StringBuilder()
+        collectVisibleText(root, sb)
+        if (sb.isEmpty()) return
+        val pageText = normaliseName(sb.toString())
+        // The installer shows Install for a new app and Update for an app
+        // that is already on the phone. PowerLock itself is blocked either
+        // way — updating it mid-lock would remove the lock.
+        val isPowerLock = pageText.contains("powerlock")
+        val isUpdate = pageText.contains("update") || pageText.contains("আপডেট")
+        val isInstall = pageText.contains("install") || pageText.contains("ইনস্টল")
+        if (!isInstall && !isUpdate) return
+        if (isPowerLock) {
+            blockInstall(pkg, "PowerLock")
+            return
+        }
+        // Updates to other apps are allowed — the user's GitHub APKs are
+        // updates to apps already on the phone.
+        if (isUpdate) return
+        // A new install: allowed only if the package is on the install
+        // allowlist. The installer shows the app name, not the package —
+        // so match an allowlisted package by its label (when installed) or
+        // by the package name itself (when the installer shows it).
+        if (isInstallAllowed(pageText)) return
+        blockInstall(pkg, "New app")
+    }
+
+    private fun isInstallAllowed(pageText: String): Boolean {
+        val allowed = Extra.installAllowApps(this)
+        if (allowed.isEmpty()) return false
+        for (pkg in allowed) {
+            if (pageText.contains(normaliseName(pkg))) return true
+            try {
+                val label = packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+                if (label.isNotBlank() && pageText.contains(normaliseName(label))) return true
+            } catch (_: Exception) { }
+        }
+        return false
+    }
+
+    private fun blockInstall(pkg: String, detail: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastInstallBlock < 200) return
+        lastInstallBlock = now
+        Extra.logAttempt(this, "install", pkg, detail)
+        limitBlockActive = true
+        try {
+            showBlockOverlay(pkg, L.t("Install is blocked during a lock", "লক চলাকালীন ইনস্টল ব্লক করা আছে"), detail)
+        } catch (ex: Exception) {
+            Log.e(TAG, "install block overlay failed", ex)
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
+        handler.removeCallbacks(installBack)
+        handler.postDelayed(installBack, 100)
         handler.removeCallbacks(uninstallOverlayHide)
         handler.postDelayed(uninstallOverlayHide, 3000)
     }

@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "119"
+    const val BUILD_ID = "120"
 
     // ---------- extend time (never reduce) ----------
 
@@ -267,6 +267,19 @@ object Extra {
 
     fun setWhitelistApps(ctx: Context, apps: Set<String>) {
         Store.settings(ctx).edit().putString("whitelist_apps", apps.joinToString(",")).apply()
+    }
+
+    /** Packages allowed to be installed or updated during a lock (build 120).
+     * The user adds package names here; those apps can be installed or
+     * updated even while a lock runs. PowerLock itself is never allowed —
+     * updating it mid-lock would remove the lock. */
+    fun installAllowApps(ctx: Context): Set<String> {
+        val s = Store.settings(ctx).getString("install_allow_apps", "") ?: ""
+        return s.split(",").filter { it.isNotEmpty() }.toSet()
+    }
+
+    fun setInstallAllowApps(ctx: Context, apps: Set<String>) {
+        Store.settings(ctx).edit().putString("install_allow_apps", apps.joinToString(",")).apply()
     }
 
     /** Packages added by typing the package name (not from the picker): they
@@ -2368,6 +2381,74 @@ fun MainActivity.whitelistCard(): View {
     return c
 }
 
+/** Install allowlist (build 120): packages that may be installed or updated
+ * even during a lock. Shown under the install-block toggle. PowerLock
+ * itself is never allowed here — updating it mid-lock would remove the lock. */
+fun MainActivity.installAllowCard(): View {
+    val c = card()
+    c.addView(section(L.t("Install allowlist", "ইনস্টল অনুমতি তালিকা")))
+    c.addView(
+        tv(
+            L.t("Packages listed here can be installed or updated even during a lock. Play Store installs are always allowed. PowerLock itself can never be added — updating it during a lock would remove the lock.",
+                "এখানে থাকা প্যাকেজগুলো লক চলাকালীনও ইনস্টল বা আপডেট করা যাবে। Play Store থেকে ইনস্টল সবসময় চালু থাকে। PowerLock নিজেকে এখানে অ্যাড করা যাবে না — লক চলাকালীন ওটা আপডেট করলে লকটাই শেষ হয়ে যাবে।"),
+            12f, C.muted
+        ),
+        lp(MATCH, WRAP, t = dp(4))
+    )
+    val pkgs = Extra.installAllowApps(this).sorted()
+    if (pkgs.isEmpty()) {
+        c.addView(tv(L.t("No package added yet.", "এখনো কোনো প্যাকেজ অ্যাড করা হয়নি।"), 12f, C.muted), lp(MATCH, WRAP, t = dp(8)))
+    } else {
+        for (pkg in pkgs) {
+            val row = LinearLayout(this)
+            row.orientation = LinearLayout.HORIZONTAL
+            row.gravity = Gravity.CENTER_VERTICAL
+            val icon = ImageView(this)
+            try { icon.setImageDrawable(packageManager.getApplicationIcon(pkg)) } catch (_: Exception) { }
+            row.addView(icon, lp(dp(40), dp(40), r = dp(12)))
+            val texts = LinearLayout(this)
+            texts.orientation = LinearLayout.VERTICAL
+            texts.addView(tv(appLabelFor(pkg), 14f, C.text), lp(MATCH, WRAP))
+            texts.addView(tv(pkg, 11f, C.muted), lp(MATCH, WRAP))
+            row.addView(texts, lp(0, WRAP, weight = 1f))
+            val remove = tv("✕", 18f, C.danger)
+            remove.setPadding(dp(8), dp(8), dp(8), dp(8))
+            remove.setOnClickListener {
+                val newSet = Extra.installAllowApps(this).toMutableSet()
+                newSet.remove(pkg)
+                Extra.setInstallAllowApps(this, newSet)
+                go(4)
+            }
+            row.addView(remove, lp(WRAP, WRAP, l = dp(8)))
+            c.addView(row, lp(MATCH, WRAP, t = dp(8)))
+        }
+    }
+    val add = outlineBtn(L.t("Add by package name", "প্যাকেজ নাম দিয়ে অ্যাড করুন"), C.primary)
+    add.setOnClickListener {
+        val input = edit(L.t("Package name, e.g. com.example.app", "প্যাকেজ নাম, যেমন com.example.app"), false)
+        val body = LinearLayout(this)
+        body.orientation = LinearLayout.VERTICAL
+        body.setPadding(dp(20), dp(12), dp(20), dp(4))
+        body.addView(input, lp(MATCH, WRAP))
+        dlg()
+            .setTitle(L.t("Add package", "প্যাকেজ অ্যাড করুন"))
+            .setView(body)
+            .setPositiveButton(L.t("Add", "যোগ করুন")) { _, _ ->
+                val pkg = input.text.toString().trim().lowercase()
+                if (pkg.isEmpty()) { toast(L.t("Type a package name", "প্যাকেজ নাম লিখুন")); return@setPositiveButton }
+                if (pkg == packageName) { toast(L.t("PowerLock itself cannot be added", "PowerLock নিজেকে অ্যাড করা যাবে না")); return@setPositiveButton }
+                val newSet = Extra.installAllowApps(this).toMutableSet()
+                newSet.add(pkg)
+                Extra.setInstallAllowApps(this, newSet)
+                go(4)
+            }
+            .setNegativeButton(L.t("Cancel", "বাতিল করুন"), null)
+            .show()
+    }
+    c.addView(add, lp(MATCH, dp(48), t = dp(10)))
+    return c
+}
+
 /** Add a package name by typing it — the app need not be installed yet, it is
  * blocked as soon as it is installed. [mode] is "full", "reels" or "msg". */
 private fun MainActivity.addPackageDialog(mode: String, done: () -> Unit) {
@@ -3661,6 +3742,7 @@ private fun diagReasonLabel(kind: String): String = when (kind) {
     "dns" -> L.t("DNS change block", "DNS পরিবর্তন ব্লক")
     "user" -> L.t("Guest user block", "Guest ইউজার ব্লক")
     "whitelist" -> L.t("Whitelist block", "হোয়াইটলিস্ট ব্লক")
+    "install" -> L.t("Install block", "ইনস্টল ব্লক")
     "crash" -> L.t("Service crash", "সার্ভিস ক্র্যাশ")
     "reels" -> L.t("Reels block", "রিলস ব্লক")
     "msgsearch" -> L.t("Search block", "সার্চ ব্লক")
