@@ -937,6 +937,21 @@ class PowerBlockService : AccessibilityService() {
             if (hitPkg == null) {
                 hitPkg = findUninstallTarget(root, labels)
             }
+            // Build 122: long-press block — when the user holds a protected
+            // app's icon for ~1 second, the launcher shows a popup menu
+            // with an "Uninstall" option. Block right there, before
+            // Uninstall can be tapped. The popup carries the app name +
+            // "Uninstall"; the plain home screen shows the name but never
+            // the word "uninstall", so this cannot fire on a normal home
+            // screen. Restricted to launcher packages so the App info page
+            // (Settings) is not blocked just for viewing it.
+            if (hitPkg == null && pageText.contains("uninstall")) {
+                val isLauncher = resolveHomePkgs().contains(pkg) ||
+                    pkg.contains("launcher") || pkg.contains("hiboard")
+                if (isLauncher) {
+                    hitPkg = playStorePagePkg(pageText, labels)
+                }
+            }
         }
         val target = hitPkg ?: return
         // 200 ms dedup (was 1000 ms): a fast re-tap must be blocked too.
