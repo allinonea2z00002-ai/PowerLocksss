@@ -124,6 +124,18 @@ class PowerBlockService : AccessibilityService() {
     @Volatile
     private var abMsg: Set<String> = emptySet()
 
+    // Whitelist mode (build 116): during a lock only whitelisted apps open.
+    @Volatile
+    private var wlOn = false
+
+    @Volatile
+    private var wlApps: Set<String> = emptySet()
+
+    // Cached: the home launcher and the dialer are always allowed, so the
+    // user can always reach the home screen and make calls.
+    private var launcherPkg: String? = null
+    private var dialerPkg: String? = null
+
     // Daily limits: foreground time per app, counted without any lock running.
     @Volatile
     private var limitMap: Map<String, Int> = emptyMap()
@@ -322,10 +334,17 @@ class PowerBlockService : AccessibilityService() {
     private var lastKeepAliveCheck = 0L // throttles the revive check (once per 30s)
 
     // English + Bengali: the phone's system language decides the menu text.
+    // Build 115: "Restart" / "রিস্টার্ট" REMOVED as standalone triggers —
+    // the word appears in ordinary UI text (even in this app's own Settings
+    // note: "ফোর্স রিস্টার্ট"), and scanWindows(true) searches every window,
+    // so a SystemUI event fired the power block while the user was just
+    // scrolling Settings, without ever pressing power. The menu is still
+    // caught by its power-off slider/button text, which ordinary text
+    // never contains.
     private val triggers = listOf(
         "Swipe to power off", "Swipe to restart", "Swipe for SOS",
-        "Power off", "Restart",
-        "পাওয়ার বন্ধ", "পাওয়ার অফ", "রিস্টার্ট", "বন্ধ করতে সোয়াইপ"
+        "Power off",
+        "পাওয়ার বন্ধ", "পাওয়ার অফ", "বন্ধ করতে সোয়াইপ"
     )
     private val triggersLower = triggers.map { it.lowercase() }
 
@@ -461,6 +480,8 @@ class PowerBlockService : AccessibilityService() {
         abFull = Extra.appBlockFull(this)
         abReels = Extra.appBlockReels(this)
         abMsg = Extra.appBlockMsg(this)
+        wlOn = st.getBoolean("whitelist_on", false) // Whitelist mode (build 116)
+        wlApps = Extra.whitelistApps(this)
         limitMap = Extra.dailyLimits(this)
         blockMsg = Extra.blockMessage(this)
         siteUrlOn = st.getBoolean("site_url_on", false)
@@ -610,6 +631,10 @@ class PowerBlockService : AccessibilityService() {
                 onLimitBlockedApp(e)
             } else if (!protecting()) {
                 return
+            } else if (wlOn && !isWhitelisted(pkg)) {
+                // Whitelist mode (build 116): during a lock only whitelisted
+                // apps open. Checked before the blocklist — it is stricter.
+                onWhitelistBlockedApp(e)
             } else if (abOn && abFull.contains(pkg)) {
                 onFullBlockedApp(e)
             } else if (abOn && (abReels.contains(pkg) || abMsg.contains(pkg))) {
@@ -1047,6 +1072,53 @@ class PowerBlockService : AccessibilityService() {
         limitBlockActive = false // a lock block, not a limit block
         showBlockOverlay(pkg) // screen first: it must cover the app before anything else runs
         Extra.logAttempt(this, "appblock", pkg)
+    }
+
+    // ---------- whitelist mode (build 116) ----------
+
+    /** The default launcher package (cached): the home screen is never blocked. */
+    private fun resolveLauncherPkg(): String? {
+        if (launcherPkg != null) return launcherPkg
+        launcherPkg = try {
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+        } catch (e: Exception) { null }
+        return launcherPkg
+    }
+
+    /** The default dialer package (cached): calls must always work. */
+    private fun resolveDialerPkg(): String? {
+        if (dialerPkg != null) return dialerPkg
+        dialerPkg = try {
+            val intent = Intent(Intent.ACTION_DIAL)
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+        } catch (e: Exception) { null }
+        return dialerPkg
+    }
+
+    /** True when the app may run during a lock under Whitelist mode: the
+     * whitelist itself, plus PowerLock, the launcher, the dialer and the
+     * current keyboard (typing in an allowed app must not count as leaving it). */
+    private fun isWhitelisted(pkg: String): Boolean {
+        if (pkg == packageName) return true
+        if (wlApps.contains(pkg)) return true
+        if (pkg == resolveLauncherPkg()) return true
+        if (pkg == resolveDialerPkg()) return true
+        if (pkg == currentImePackage()) return true
+        return false
+    }
+
+    private fun onWhitelistBlockedApp(e: AccessibilityEvent) {
+        val pkg = e.packageName?.toString() ?: return
+        val now = SystemClock.uptimeMillis()
+        if (pkg == lastBlockPkg && now - lastBlockAt < 1000 && blockOverlayAttached) return
+        lastBlockPkg = pkg
+        lastBlockAt = now
+        limitBlockActive = false // a lock block, not a limit block
+        showBlockOverlay(pkg) // screen first: it must cover the app before anything else runs
+        Extra.logAttempt(this, "whitelist", pkg)
     }
 
     // ---------- daily limits ----------
@@ -2451,12 +2523,13 @@ class PowerBlockService : AccessibilityService() {
         return false
     }
 
-    /** The power menu always has the "power off" slider (English or Bengali). */
+    /** The power menu always has the "power off" slider (English or Bengali).
+     * Build 115: "রিস্টার্ট" removed — it appears in ordinary UI text
+     * (this app's own Settings note), so it false-fired the power block. */
     private fun hasPowerMenu(n: AccessibilityNodeInfo?): Boolean {
         if (n == null) return false
         return n.findAccessibilityNodeInfosByText("to power off").isNotEmpty() ||
-                n.findAccessibilityNodeInfosByText("পাওয়ার বন্ধ").isNotEmpty() ||
-                n.findAccessibilityNodeInfosByText("রিস্টার্ট").isNotEmpty()
+                n.findAccessibilityNodeInfosByText("পাওয়ার বন্ধ").isNotEmpty()
     }
 
     /** System windows first (where the power menu lives); other windows only when [all] is true. */

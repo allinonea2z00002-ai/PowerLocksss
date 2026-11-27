@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "114"
+    const val BUILD_ID = "116"
 
     // ---------- extend time (never reduce) ----------
 
@@ -250,6 +250,23 @@ object Extra {
 
     fun setAppBlockMsg(ctx: Context, apps: Set<String>) {
         Store.settings(ctx).edit().putString("ab_msg", apps.joinToString(",")).apply()
+    }
+
+    // ---------- whitelist mode (Protection) ----------
+
+    /** Master switch for Whitelist mode. Off by default. */
+    fun whitelistOn(ctx: Context): Boolean =
+        Store.settings(ctx).getBoolean("whitelist_on", false)
+
+    /** Packages that are ALLOWED during a lock: everything else is blocked.
+     * The launcher, the dialer and PowerLock itself are always allowed. */
+    fun whitelistApps(ctx: Context): Set<String> {
+        val s = Store.settings(ctx).getString("whitelist_apps", "") ?: ""
+        return s.split(",").filter { it.isNotEmpty() }.toSet()
+    }
+
+    fun setWhitelistApps(ctx: Context, apps: Set<String>) {
+        Store.settings(ctx).edit().putString("whitelist_apps", apps.joinToString(",")).apply()
     }
 
     /** Packages added by typing the package name (not from the picker): they
@@ -2272,6 +2289,53 @@ fun MainActivity.appBlockModeCard(mode: String): View {
     return c
 }
 
+/** Whitelist mode card (Protection tab): during a lock only the chosen apps
+ * open — everything else is blocked. The inverse of the full app block, and
+ * stricter: instead of picking apps to block, you pick the few apps that
+ * stay allowed. The toggle and the picker are locked while a session runs
+ * (adding an app mid-session would weaken the lock), so change the list
+ * before starting a lock. */
+fun MainActivity.whitelistCard(): View {
+    val c = card()
+    c.addView(section(L.t("Whitelist mode", "হোয়াইটলিস্ট মোড")))
+    c.addView(
+        tv(
+            L.t("During a lock, only the apps you choose can open — every other app is blocked. This is stricter than the app block list: instead of picking apps to block, you pick the few apps that stay allowed. The home screen, the phone dialer and PowerLock itself always stay allowed, so you can always make calls and stop the lock.",
+                "লক চলাকালীন শুধু তোমার বাছা অ্যাপগুলোই খুলবে — বাকি সব অ্যাপ ব্লক হবে। এটা অ্যাপ ব্লক লিস্টের উল্টো আর আরও কঠোর: ব্লক করার অ্যাপ বাছার বদলে শুধু যে কয়টা অ্যাপ চালু থাকবে সেগুলো বাছো। হোম স্ক্রিন, ফোন ডায়ালার আর PowerLock নিজে সবসময় চালু থাকে, তাই কল করা আর লক বন্ধ করা সবসময় যাবে।"),
+            13f, C.muted
+        ),
+        lp(MATCH, WRAP, t = dp(6))
+    )
+    val locked = Store.isActive(this)
+    val row = LinearLayout(this)
+    row.gravity = Gravity.CENTER_VERTICAL
+    row.addView(tv(L.t("Whitelist mode", "হোয়াইটলিস্ট মোড"), 16f, C.text, 1), lp(0, WRAP, weight = 1f))
+    val sw = toggle(Extra.whitelistOn(this)) { v ->
+        Store.settings(this).edit().putBoolean("whitelist_on", v).apply()
+        go(4)
+    }
+    if (locked) sw.isEnabled = false
+    row.addView(sw)
+    c.addView(row, lp(MATCH, WRAP, t = dp(10)))
+    val count = Extra.whitelistApps(this).size
+    val pick = outlineBtn(L.t("Choose allowed apps ($count selected)", "চালু থাকবে এমন অ্যাপ বাছুন ($count টি নির্বাচিত)"), C.primary)
+    if (locked) pick.isEnabled = false
+    pick.setOnClickListener {
+        groupAppPicker(Extra.whitelistApps(this)) { newSet ->
+            Extra.setWhitelistApps(this, newSet)
+            go(4)
+        }
+    }
+    c.addView(pick, lp(MATCH, dp(48), t = dp(10)))
+    if (count == 0) {
+        c.addView(tv(L.t("No apps chosen yet — only the home screen and the phone dialer will work during a lock.", "এখনো কোনো অ্যাপ বাছা হয়নি — লক চলাকালীন শুধু হোম স্ক্রিন আর ফোন ডায়ালার চলবে।"), 12f, C.warn), lp(MATCH, WRAP, t = dp(8)))
+    }
+    if (locked) {
+        c.addView(tv(L.t("While a session runs, the whitelist cannot be changed.", "সেশন চলাকালীন হোয়াইটলিস্ট বদলানো যাবে না।"), 12f, C.warn), lp(MATCH, WRAP, t = dp(8)))
+    }
+    return c
+}
+
 /** Add a package name by typing it — the app need not be installed yet, it is
  * blocked as soon as it is installed. [mode] is "full", "reels" or "msg". */
 private fun MainActivity.addPackageDialog(mode: String, done: () -> Unit) {
@@ -3564,6 +3628,7 @@ private fun diagReasonLabel(kind: String): String = when (kind) {
     "uninstall" -> L.t("Uninstall block", "আনইনস্টল ব্লক")
     "dns" -> L.t("DNS change block", "DNS পরিবর্তন ব্লক")
     "user" -> L.t("Guest user block", "Guest ইউজার ব্লক")
+    "whitelist" -> L.t("Whitelist block", "হোয়াইটলিস্ট ব্লক")
     "crash" -> L.t("Service crash", "সার্ভিস ক্র্যাশ")
     "reels" -> L.t("Reels block", "রিলস ব্লক")
     "msgsearch" -> L.t("Search block", "সার্চ ব্লক")
