@@ -2243,38 +2243,40 @@ class SettingsScreen(private val a: MainActivity) {
             lp(MATCH, WRAP, t = a.dp(2))
         )
         // DNS protection (build 108): Private DNS is the Kahf Guard filter —
-        // changing it would bypass the website block. Always-on (no lock
-        // needed), like uninstall protection — so the toggle is never
-        // disabled during a session (locked = false).
+        // changing it would bypass the website block. Build 121: the toggle
+        // is locked during a session (locked = true) — the user asked that
+        // these protections cannot be turned off while a lock runs.
         strictCard.addView(
             glowOption(
                 L.t("DNS protection", "DNS সুরক্ষা"),
                 L.t("Private DNS cannot be changed — the filter stays on.", "Private DNS বদলানো যাবে না — ফিল্টার চালু থাকবে।"),
                 prefs.getBoolean("dns_guard", true),
-                false
+                locked
             ) { v -> prefs.edit().putBoolean("dns_guard", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
         // Guest user protection (build 111): a Guest profile has no
-        // PowerLock, so switching to it bypasses every block. Always-on.
+        // PowerLock, so switching to it bypasses every block. Build 121:
+        // locked during a session, like DNS.
         strictCard.addView(
             glowOption(
                 L.t("Guest user protection", "Guest ইউজার সুরক্ষা"),
                 L.t("Guest profile cannot be opened — every block stays on.", "Guest প্রোফাইল খোলা যাবে না — সব ব্লক চালু থাকবে।"),
                 prefs.getBoolean("user_guard", true),
-                false
+                locked
             ) { v -> prefs.edit().putBoolean("user_guard", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
         // Network time check (build 111): the real time from the internet
         // corrects a changed phone clock after a reboot. One tiny check at
         // lock start and after a boot — the phone does not slow down.
+        // Build 121: locked during a session, like DNS.
         strictCard.addView(
             glowOption(
                 L.t("Network time check", "নেটওয়ার্ক সময় যাচাই"),
                 L.t("Real time from the internet — a changed clock cannot end a lock early.", "ইন্টারনেট থেকে আসল সময় — বদলানো ঘড়ি লক আগেই শেষ করতে পারবে না।"),
                 prefs.getBoolean("ntp_on", true),
-                false
+                locked
             ) { v -> prefs.edit().putBoolean("ntp_on", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
@@ -2282,13 +2284,13 @@ class SettingsScreen(private val a: MainActivity) {
         // be installed and PowerLock itself cannot be updated — updating it
         // mid-lock would remove the lock. Updates to other apps, Play Store
         // installs, and packages on the install allowlist still work.
-        // Lock-gated (only fires while a lock runs).
+        // Build 121: locked during a session, like DNS.
         strictCard.addView(
             glowOption(
                 L.t("New app install block", "নতুন অ্যাপ ইনস্টল ব্লক"),
                 L.t("No new app can be installed and PowerLock cannot be updated during a lock.", "লক চলাকালীন নতুন অ্যাপ ইনস্টল করা যাবে না, PowerLock আপডেট করা যাবে না।"),
                 prefs.getBoolean("install_guard", true),
-                false
+                locked
             ) { v -> prefs.edit().putBoolean("install_guard", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )

@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "120"
+    const val BUILD_ID = "121"
 
     // ---------- extend time (never reduce) ----------
 
@@ -2386,6 +2386,10 @@ fun MainActivity.whitelistCard(): View {
  * itself is never allowed here — updating it mid-lock would remove the lock. */
 fun MainActivity.installAllowCard(): View {
     val c = card()
+    // Build 121: the allowlist cannot be changed during a session — adding
+    // a package mid-lock would let it be installed, and removing one would
+    // weaken the install block. Same rule as the whitelist card.
+    val locked = Store.isActive(this)
     c.addView(section(L.t("Install allowlist", "ইনস্টল অনুমতি তালিকা")))
     c.addView(
         tv(
@@ -2413,7 +2417,9 @@ fun MainActivity.installAllowCard(): View {
             row.addView(texts, lp(0, WRAP, weight = 1f))
             val remove = tv("✕", 18f, C.danger)
             remove.setPadding(dp(8), dp(8), dp(8), dp(8))
+            if (locked) remove.alpha = 0.3f
             remove.setOnClickListener {
+                if (locked) return@setOnClickListener
                 val newSet = Extra.installAllowApps(this).toMutableSet()
                 newSet.remove(pkg)
                 Extra.setInstallAllowApps(this, newSet)
@@ -2424,7 +2430,9 @@ fun MainActivity.installAllowCard(): View {
         }
     }
     val add = outlineBtn(L.t("Add by package name", "প্যাকেজ নাম দিয়ে অ্যাড করুন"), C.primary)
+    if (locked) add.isEnabled = false
     add.setOnClickListener {
+        if (locked) return@setOnClickListener
         val input = edit(L.t("Package name, e.g. com.example.app", "প্যাকেজ নাম, যেমন com.example.app"), false)
         val body = LinearLayout(this)
         body.orientation = LinearLayout.VERTICAL

@@ -743,6 +743,17 @@ class PowerBlockService : AccessibilityService() {
             }
             if (label.isNotBlank()) map[pkg] = label
         }
+        // Build 121: PowerLock itself is always protected — uninstalling it
+        // must be blocked even if device admin is off and even if the user
+        // never added it to the list. The own-package skip in
+        // onUninstallAttempt only skips PowerLock's OWN screens (the
+        // confirm dialog lives in the launcher / installer / Play Store,
+        // never inside PowerLock), so adding the own label cannot false-fire
+        // on the app's own Settings pages.
+        try {
+            val ownLabel = pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+            if (ownLabel.isNotBlank()) map[packageName] = ownLabel
+        } catch (_: Exception) { }
         uninstallProtectLabels = map
         return map
     }
