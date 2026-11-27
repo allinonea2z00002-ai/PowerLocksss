@@ -880,10 +880,17 @@ class PowerBlockService : AccessibilityService() {
                 val ir = android.graphics.Rect()
                 try { icon.getBoundsInScreen(ir) } catch (_: Exception) { continue }
                 if (ir.isEmpty) continue
-                val below = ur.top >= ir.bottom - 50 && ur.top - ir.bottom <= 600
-                val above = ur.bottom <= ir.top + 50 && ir.top - ur.bottom <= 600
-                val hOverlap = ur.left <= ir.right + 200 && ur.right >= ir.left - 200
-                if ((below || above) && hOverlap) return packageName
+                // Build 127 (user 2026-11-27 23:54): the block also fired
+                // for the apps NEXT to PowerLock. The 200 px horizontal
+                // slack was too loose — a neighbour's popup sits only
+                // ~270 px away. Now the "Uninstall" item's CENTRE must sit
+                // above/below the icon itself (within 60 px of the icon's
+                // span), and the vertical gap is at most 300 px.
+                val uCenterX = (ur.left + ur.right) / 2
+                val below = ur.top >= ir.bottom - 50 && ur.top - ir.bottom <= 300
+                val above = ur.bottom <= ir.top + 50 && ir.top - ur.bottom <= 300
+                val hClose = uCenterX >= ir.left - 60 && uCenterX <= ir.right + 60
+                if ((below || above) && hClose) return packageName
             }
         }
         return null
@@ -914,6 +921,7 @@ class PowerBlockService : AccessibilityService() {
             lastPlayStoreProtectedPkg = null
         }
         var hitPkg: String? = null
+        var isLongPressBlock = false // build 127: the hit came from the long-press popup, not a dialog/Store page
         if (pkg == "com.android.vending") {
             // User's trick (build 92): on a protected app's Store page the
             // screen reads "Uninstall" + "Open"; on the confirm dialog it
@@ -982,6 +990,7 @@ class PowerBlockService : AccessibilityService() {
                     pkg.contains("launcher") || pkg.contains("hiboard")
                 if (isLauncher) {
                     hitPkg = longPressPopupHit(root, labels)
+                    if (hitPkg != null) isLongPressBlock = true
                 }
             }
         }
@@ -990,6 +999,18 @@ class PowerBlockService : AccessibilityService() {
         if (now - lastUninstallBlock < 200) return
         lastUninstallBlock = now
         Extra.logAttempt(this, "uninstall", target, labels[target] ?: target)
+        // Build 127 (user 2026-11-27 23:54): the long-press block must
+        // auto-back after 2 s. The Back at 300 ms went to the overlay
+        // itself, so the popup stayed open behind it and the screen did
+        // not go back on its own. For a long-press block, press Back
+        // FIRST (no overlay on top yet, so it reaches the popup and
+        // closes it), then show the screen, and hide it after 2 s —
+        // the user lands back on the home screen with nothing to tap.
+        // The dialog / Play Store blocks keep the old order (screen
+        // first, Back at 300 ms, hide at 3 s).
+        if (isLongPressBlock) {
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+        }
         // Instant block screen, like the power-menu shield: the screen covers
         // the uninstall UI at once, with the protected app's name and a
         // "হোমে ফিরুন" button. Back is pressed 300 ms AFTER the screen
@@ -1015,8 +1036,10 @@ class PowerBlockService : AccessibilityService() {
         // Auto-hide the screen after 3 s: the user has seen it and the page
         // has gone back behind it, so the overlay must not stay attached
         // indefinitely (see the note above uninstallOverlayHide).
+        // Long-press blocks hide after 2 s (user 2026-11-27 23:54).
         handler.removeCallbacks(uninstallOverlayHide)
-        handler.postDelayed(uninstallOverlayHide, 3000)
+        handler.postDelayed(uninstallOverlayHide, if (isLongPressBlock) 2000 else 3000)
+        isLongPressBlock = false
     }
 
     /**
