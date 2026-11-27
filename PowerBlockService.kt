@@ -937,19 +937,27 @@ class PowerBlockService : AccessibilityService() {
             if (hitPkg == null) {
                 hitPkg = findUninstallTarget(root, labels)
             }
-            // Build 122: long-press block — when the user holds a protected
-            // app's icon for ~1 second, the launcher shows a popup menu
-            // with an "Uninstall" option. Block right there, before
-            // Uninstall can be tapped. The popup carries the app name +
-            // "Uninstall"; the plain home screen shows the name but never
-            // the word "uninstall", so this cannot fire on a normal home
-            // screen. Restricted to launcher packages so the App info page
+            // Build 123 (user correction 2026-11-27 22:58): long-press
+            // block — ONLY for PowerLock itself, and ONLY while a lock
+            // is on. Build 122 fired for every protected app even with
+            // no lock; the user wants it only for PowerLock 2 and only
+            // when the lock is running. When the user holds the PowerLock
+            // icon for ~1 second, the launcher shows a popup menu with
+            // an "Uninstall" option — block right there, before Uninstall
+            // can be tapped. The popup carries the app name + "Uninstall";
+            // the plain home screen shows the name but never the word
+            // "uninstall", so this cannot fire on a normal home screen.
+            // Restricted to launcher packages so the App info page
             // (Settings) is not blocked just for viewing it.
-            if (hitPkg == null && pageText.contains("uninstall")) {
+            if (hitPkg == null && protecting() && pageText.contains("uninstall")) {
                 val isLauncher = resolveHomePkgs().contains(pkg) ||
                     pkg.contains("launcher") || pkg.contains("hiboard")
                 if (isLauncher) {
-                    hitPkg = playStorePagePkg(pageText, labels)
+                    // Only the own label (PowerLock 2) — not any protected app.
+                    val ownLabel = normaliseName(labels[packageName] ?: "")
+                    if (ownLabel.length >= 3 && pageText.contains(ownLabel)) {
+                        hitPkg = packageName
+                    }
                 }
             }
         }
