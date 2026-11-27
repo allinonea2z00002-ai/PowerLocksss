@@ -856,55 +856,35 @@ class PowerBlockService : AccessibilityService() {
      * uninstall sheet comes from the launcher itself, not the installer, so a
      * guarded-package check never sees it.
      */
-    // Build 125: the Vivo long-press popup carries NO app name — only
-    // "Uninstall / App info / Share / App clone / Remove" — so the
-    // popup-only text scan (build 124) can never match the own label,
-    // and the block never fired (user video 2026-11-27 23:24: the popup
-    // sits there with no block). Link the popup to its icon by POSITION
-    // instead: the popup is anchored just under (or above) the icon that
-    // was held. Find the popup window (has "uninstall", not full-screen),
-    // find the PowerLock icon node in the home window, and block only
-    // when the popup sits next to that icon.
-    private fun longPressPopupHit(labels: Map<String, String>): String? {
+    // Build 126: the Vivo long-press popup is NOT a separate accessibility
+    // window — it is drawn inside the launcher window — so build 125's
+    // "find the popup window" never found one and the block never fired
+    // (user screenshot 2026-11-27 23:39: the popup sits there, no block).
+    // Work inside the launcher window instead: find the "Uninstall" menu
+    // item node and the PowerLock icon node in the same tree, and block
+    // only when the menu item sits just under (or above) that icon.
+    private fun longPressPopupHit(root: AccessibilityNodeInfo, labels: Map<String, String>): String? {
         val ownLabel = labels[packageName] ?: ""
         if (ownLabel.isBlank()) return null
-        val wins = try { windows } catch (_: Exception) { null } ?: return null
-        val screenH = try { resources.displayMetrics.heightPixels } catch (_: Exception) { 0 }
-        val screenW = try { resources.displayMetrics.widthPixels } catch (_: Exception) { 0 }
-        if (screenH <= 0 || screenW <= 0) return null
-        var popupRect: android.graphics.Rect? = null
-        var homeRoot: AccessibilityNodeInfo? = null
-        for (w in wins) {
-            val root = try { w.root } catch (_: Exception) { null } ?: continue
-            val sb = StringBuilder()
-            collectVisibleText(root, sb)
-            if (sb.isEmpty()) continue
-            val text = normaliseName(sb.toString())
-            val r = android.graphics.Rect()
-            try { w.getBoundsInScreen(r) } catch (_: Exception) { continue }
-            if (r.isEmpty) continue
-            val fullScreen = r.width() >= screenW * 9 / 10 && r.height() >= screenH * 9 / 10
-            if (popupRect == null && text.contains("uninstall") && !fullScreen) {
-                popupRect = r
+        val allUninstall = ArrayList<AccessibilityNodeInfo>()
+        try { root.findAccessibilityNodeInfosByText("Uninstall")?.let { allUninstall.addAll(it) } } catch (_: Exception) { }
+        try { root.findAccessibilityNodeInfosByText("আনইনস্টল")?.let { allUninstall.addAll(it) } } catch (_: Exception) { }
+        if (allUninstall.isEmpty()) return null
+        val iconNodes = try { root.findAccessibilityNodeInfosByText(ownLabel) } catch (_: Exception) { null } ?: return null
+        if (iconNodes.isEmpty()) return null
+        for (u in allUninstall) {
+            val ur = android.graphics.Rect()
+            try { u.getBoundsInScreen(ur) } catch (_: Exception) { continue }
+            if (ur.isEmpty) continue
+            for (icon in iconNodes) {
+                val ir = android.graphics.Rect()
+                try { icon.getBoundsInScreen(ir) } catch (_: Exception) { continue }
+                if (ir.isEmpty) continue
+                val below = ur.top >= ir.bottom - 50 && ur.top - ir.bottom <= 600
+                val above = ur.bottom <= ir.top + 50 && ir.top - ur.bottom <= 600
+                val hOverlap = ur.left <= ir.right + 200 && ur.right >= ir.left - 200
+                if ((below || above) && hOverlap) return packageName
             }
-            if (homeRoot == null && text.contains(normaliseName(ownLabel))) {
-                homeRoot = root
-            }
-        }
-        val popup = popupRect ?: return null
-        val home = homeRoot ?: return null
-        val iconNodes = try { home.findAccessibilityNodeInfosByText(ownLabel) } catch (_: Exception) { null } ?: return null
-        for (n in iconNodes) {
-            val r = android.graphics.Rect()
-            try { n.getBoundsInScreen(r) } catch (_: Exception) { continue }
-            if (r.isEmpty) continue
-            // The popup sits just under its icon (or just above it when
-            // the icon is near the bottom): the vertical gap is small and
-            // the two overlap horizontally.
-            val below = popup.top >= r.bottom - 50 && popup.top - r.bottom <= 500
-            val above = popup.bottom <= r.top + 50 && r.top - popup.bottom <= 500
-            val hOverlap = popup.left <= r.right + 150 && popup.right >= r.left - 150
-            if ((below || above) && hOverlap) return packageName
         }
         return null
     }
@@ -990,14 +970,19 @@ class PowerBlockService : AccessibilityService() {
             if (hitPkg == null) {
                 hitPkg = findUninstallTarget(root, labels)
             }
-            // Build 124 (user video 2026-11-27 23:09): the long-press
+            // Build 126 (user screenshot 2026-11-27 23:39): the long-press
             // block must fire ONLY for PowerLock's own popup, and ONLY
-            // while a lock is on. Build 122/123 scanned the whole
-            // launcher window, which always holds the PowerLock icon
-            // label, so any long-press fired it. Now the popup window is
-            // scanned on its own via longPressPopupHit.
+            // while a lock is on. Build 125 looked for a separate popup
+            // window, but the Vivo popup lives inside the launcher window,
+            // so it never found one. Now the "Uninstall" menu item node
+            // and the PowerLock icon node are matched by position inside
+            // the same launcher tree (longPressPopupHit). Launcher-only.
             if (hitPkg == null && protecting()) {
-                hitPkg = longPressPopupHit(labels)
+                val isLauncher = resolveHomePkgs().contains(pkg) ||
+                    pkg.contains("launcher") || pkg.contains("hiboard")
+                if (isLauncher) {
+                    hitPkg = longPressPopupHit(root, labels)
+                }
             }
         }
         val target = hitPkg ?: return
