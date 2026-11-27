@@ -856,6 +856,28 @@ class PowerBlockService : AccessibilityService() {
      * uninstall sheet comes from the launcher itself, not the installer, so a
      * guarded-package check never sees it.
      */
+    // Build 124: the long-press popup is its own window — scan windows
+    // one by one. The whole launcher window holds every home-screen icon
+    // label, so scanning it matches PowerLock even when another app was
+    // pressed (build 122/123 bug, caught by the user's video 2026-11-27
+    // 23:09: the block fired for other apps too). A popup window's text
+    // is only the popup: the app name + its menu options. Only when that
+    // window holds the own label + "uninstall" is it PowerLock's popup.
+    private fun longPressPopupHit(labels: Map<String, String>): String? {
+        val ownLabel = normaliseName(labels[packageName] ?: "")
+        if (ownLabel.length < 3) return null
+        val wins = try { windows } catch (_: Exception) { null } ?: return null
+        for (w in wins) {
+            val root = try { w.root } catch (_: Exception) { null } ?: continue
+            val sb = StringBuilder()
+            collectVisibleText(root, sb)
+            if (sb.isEmpty()) continue
+            val text = normaliseName(sb.toString())
+            if (text.contains(ownLabel) && text.contains("uninstall")) return packageName
+        }
+        return null
+    }
+
     private fun onUninstallAttempt(e: AccessibilityEvent) {
         val type = e.eventType
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
@@ -937,28 +959,14 @@ class PowerBlockService : AccessibilityService() {
             if (hitPkg == null) {
                 hitPkg = findUninstallTarget(root, labels)
             }
-            // Build 123 (user correction 2026-11-27 22:58): long-press
-            // block — ONLY for PowerLock itself, and ONLY while a lock
-            // is on. Build 122 fired for every protected app even with
-            // no lock; the user wants it only for PowerLock 2 and only
-            // when the lock is running. When the user holds the PowerLock
-            // icon for ~1 second, the launcher shows a popup menu with
-            // an "Uninstall" option — block right there, before Uninstall
-            // can be tapped. The popup carries the app name + "Uninstall";
-            // the plain home screen shows the name but never the word
-            // "uninstall", so this cannot fire on a normal home screen.
-            // Restricted to launcher packages so the App info page
-            // (Settings) is not blocked just for viewing it.
-            if (hitPkg == null && protecting() && pageText.contains("uninstall")) {
-                val isLauncher = resolveHomePkgs().contains(pkg) ||
-                    pkg.contains("launcher") || pkg.contains("hiboard")
-                if (isLauncher) {
-                    // Only the own label (PowerLock 2) — not any protected app.
-                    val ownLabel = normaliseName(labels[packageName] ?: "")
-                    if (ownLabel.length >= 3 && pageText.contains(ownLabel)) {
-                        hitPkg = packageName
-                    }
-                }
+            // Build 124 (user video 2026-11-27 23:09): the long-press
+            // block must fire ONLY for PowerLock's own popup, and ONLY
+            // while a lock is on. Build 122/123 scanned the whole
+            // launcher window, which always holds the PowerLock icon
+            // label, so any long-press fired it. Now the popup window is
+            // scanned on its own via longPressPopupHit.
+            if (hitPkg == null && protecting()) {
+                hitPkg = longPressPopupHit(labels)
             }
         }
         val target = hitPkg ?: return
