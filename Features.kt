@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "117"
+    const val BUILD_ID = "118"
 
     // ---------- extend time (never reduce) ----------
 
@@ -3666,6 +3666,9 @@ private fun MainActivity.diagRow(ev: Extra.DiagEvent): View {
     top.addView(tv(appLabelFor(ev.p), 15f, C.text, 1), lp(0, WRAP, weight = 1f))
     top.addView(tv(formatDiagTime(ev.t), 12f, C.muted))
     row.addView(top, lp(MATCH, WRAP))
+    // Build 118: also show the package name, so a blocked entry can be
+    // identified (the label alone does not say which app it is).
+    row.addView(tv(ev.p, 12f, C.muted), lp(MATCH, WRAP, t = dp(2)))
     row.addView(tv(diagReasonLabel(ev.k), 13f, C.mint, 1), lp(MATCH, WRAP, t = dp(2)))
     if (ev.d.isNotBlank()) {
         row.addView(tv(L.t("Matched: ", "যা ধরা পড়লো: ") + ev.d, 13f, C.muted), lp(MATCH, WRAP, t = dp(2)))

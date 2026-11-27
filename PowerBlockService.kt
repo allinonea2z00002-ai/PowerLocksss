@@ -8,7 +8,7 @@ import android.content.BroadcastReceiver
 import android.widget.TextView
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
-import android.content.pm.PackageManager // build 117: resolveLauncherPkg/resolveDialerPkg need it
+import android.content.pm.PackageManager // build 117: resolveDialerPkg needs it
 import android.net.Uri
 import android.content.SharedPreferences
 import android.graphics.Color
@@ -134,7 +134,7 @@ class PowerBlockService : AccessibilityService() {
 
     // Cached: the home launcher and the dialer are always allowed, so the
     // user can always reach the home screen and make calls.
-    private var launcherPkg: String? = null
+    private var homePkgs: Set<String>? = null
     private var dialerPkg: String? = null
 
     // Daily limits: foreground time per app, counted without any lock running.
@@ -1077,15 +1077,18 @@ class PowerBlockService : AccessibilityService() {
 
     // ---------- whitelist mode (build 116) ----------
 
-    /** The default launcher package (cached): the home screen is never blocked. */
-    private fun resolveLauncherPkg(): String? {
-        if (launcherPkg != null) return launcherPkg
-        launcherPkg = try {
+    /** All home/launcher packages (cached): the home screen is never blocked.
+     * Build 118: resolveActivity returned only ONE launcher, so a third-party
+     * launcher (Smart Launcher) was blocked by the whitelist. Querying every
+     * CATEGORY_HOME activity allows all of them. */
+    private fun resolveHomePkgs(): Set<String> {
+        if (homePkgs != null) return homePkgs!!
+        homePkgs = try {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-                ?.activityInfo?.packageName
-        } catch (e: Exception) { null }
-        return launcherPkg
+            packageManager.queryIntentActivities(intent, 0)
+                .mapNotNull { it.activityInfo?.packageName }.toSet()
+        } catch (e: Exception) { emptySet() }
+        return homePkgs!!
     }
 
     /** The default dialer package (cached): calls must always work. */
@@ -1101,11 +1104,15 @@ class PowerBlockService : AccessibilityService() {
 
     /** True when the app may run during a lock under Whitelist mode: the
      * whitelist itself, plus PowerLock, the launcher, the dialer and the
-     * current keyboard (typing in an allowed app must not count as leaving it). */
+     * current keyboard (typing in an allowed app must not count as leaving it).
+     * Build 118: SystemUI and the system navigation component are also
+     * always allowed — blocking them breaks gestures and the home button. */
     private fun isWhitelisted(pkg: String): Boolean {
         if (pkg == packageName) return true
         if (wlApps.contains(pkg)) return true
-        if (pkg == resolveLauncherPkg()) return true
+        if (resolveHomePkgs().contains(pkg)) return true
+        if (pkg.contains("launcher")) return true
+        if (pkg.contains("systemui") || pkg.contains("navigation")) return true
         if (pkg == resolveDialerPkg()) return true
         if (pkg == currentImePackage()) return true
         return false
