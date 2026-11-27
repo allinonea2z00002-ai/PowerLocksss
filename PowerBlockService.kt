@@ -856,24 +856,55 @@ class PowerBlockService : AccessibilityService() {
      * uninstall sheet comes from the launcher itself, not the installer, so a
      * guarded-package check never sees it.
      */
-    // Build 124: the long-press popup is its own window — scan windows
-    // one by one. The whole launcher window holds every home-screen icon
-    // label, so scanning it matches PowerLock even when another app was
-    // pressed (build 122/123 bug, caught by the user's video 2026-11-27
-    // 23:09: the block fired for other apps too). A popup window's text
-    // is only the popup: the app name + its menu options. Only when that
-    // window holds the own label + "uninstall" is it PowerLock's popup.
+    // Build 125: the Vivo long-press popup carries NO app name — only
+    // "Uninstall / App info / Share / App clone / Remove" — so the
+    // popup-only text scan (build 124) can never match the own label,
+    // and the block never fired (user video 2026-11-27 23:24: the popup
+    // sits there with no block). Link the popup to its icon by POSITION
+    // instead: the popup is anchored just under (or above) the icon that
+    // was held. Find the popup window (has "uninstall", not full-screen),
+    // find the PowerLock icon node in the home window, and block only
+    // when the popup sits next to that icon.
     private fun longPressPopupHit(labels: Map<String, String>): String? {
-        val ownLabel = normaliseName(labels[packageName] ?: "")
-        if (ownLabel.length < 3) return null
+        val ownLabel = labels[packageName] ?: ""
+        if (ownLabel.isBlank()) return null
         val wins = try { windows } catch (_: Exception) { null } ?: return null
+        val screenH = try { resources.displayMetrics.heightPixels } catch (_: Exception) { 0 }
+        val screenW = try { resources.displayMetrics.widthPixels } catch (_: Exception) { 0 }
+        if (screenH <= 0 || screenW <= 0) return null
+        var popupRect: android.graphics.Rect? = null
+        var homeRoot: AccessibilityNodeInfo? = null
         for (w in wins) {
             val root = try { w.root } catch (_: Exception) { null } ?: continue
             val sb = StringBuilder()
             collectVisibleText(root, sb)
             if (sb.isEmpty()) continue
             val text = normaliseName(sb.toString())
-            if (text.contains(ownLabel) && text.contains("uninstall")) return packageName
+            val r = android.graphics.Rect()
+            try { w.getBoundsInScreen(r) } catch (_: Exception) { continue }
+            if (r.isEmpty) continue
+            val fullScreen = r.width() >= screenW * 9 / 10 && r.height() >= screenH * 9 / 10
+            if (popupRect == null && text.contains("uninstall") && !fullScreen) {
+                popupRect = r
+            }
+            if (homeRoot == null && text.contains(normaliseName(ownLabel))) {
+                homeRoot = root
+            }
+        }
+        val popup = popupRect ?: return null
+        val home = homeRoot ?: return null
+        val iconNodes = try { home.findAccessibilityNodeInfosByText(ownLabel) } catch (_: Exception) { null } ?: return null
+        for (n in iconNodes) {
+            val r = android.graphics.Rect()
+            try { n.getBoundsInScreen(r) } catch (_: Exception) { continue }
+            if (r.isEmpty) continue
+            // The popup sits just under its icon (or just above it when
+            // the icon is near the bottom): the vertical gap is small and
+            // the two overlap horizontally.
+            val below = popup.top >= r.bottom - 50 && popup.top - r.bottom <= 500
+            val above = popup.bottom <= r.top + 50 && r.top - popup.bottom <= 500
+            val hOverlap = popup.left <= r.right + 150 && popup.right >= r.left - 150
+            if ((below || above) && hOverlap) return packageName
         }
         return null
     }
