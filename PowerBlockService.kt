@@ -880,17 +880,23 @@ class PowerBlockService : AccessibilityService() {
                 val ir = android.graphics.Rect()
                 try { icon.getBoundsInScreen(ir) } catch (_: Exception) { continue }
                 if (ir.isEmpty) continue
-                // Build 127 (user 2026-11-27 23:54): the block also fired
-                // for the apps NEXT to PowerLock. The 200 px horizontal
-                // slack was too loose — a neighbour's popup sits only
-                // ~270 px away. Now the "Uninstall" item's CENTRE must sit
-                // above/below the icon itself (within 60 px of the icon's
-                // span), and the vertical gap is at most 300 px.
-                val uCenterX = (ur.left + ur.right) / 2
-                val below = ur.top >= ir.bottom - 50 && ur.top - ir.bottom <= 300
-                val above = ur.bottom <= ir.top + 50 && ir.top - ur.bottom <= 300
+                // Build 128 (user 2026-11-28 05:09): the neighbour STILL
+                // triggered. Same-column neighbours were the hole: the
+                // popup of the app one row ABOVE PowerLock lands in the
+                // same x-range, so the old "above" branch matched it.
+                // A popup opens BELOW its icon (unless the icon is near
+                // the bottom, when it opens above). So match the direction
+                // the popup opens for THIS icon only: below when the icon
+                // sits in the upper two-thirds of the screen, above when
+                // it sits in the lower third. A neighbour's popup is in
+                // the other direction, so it can no longer match.
+                val screenH = try { resources.displayMetrics.heightPixels } catch (_: Exception) { 0 }
+                val iconCenterY = (ir.top + ir.bottom) / 2
+                val popupBelow = screenH <= 0 || iconCenterY < screenH * 2 / 3
+                val below = ur.top >= ir.bottom - 50 && ur.top - ir.bottom <= 200
+                val above = ur.bottom <= ir.top + 50 && ir.top - ur.bottom <= 200
                 val hClose = uCenterX >= ir.left - 60 && uCenterX <= ir.right + 60
-                if ((below || above) && hClose) return packageName
+                if (hClose && ((popupBelow && below) || (!popupBelow && above))) return packageName
             }
         }
         return null
