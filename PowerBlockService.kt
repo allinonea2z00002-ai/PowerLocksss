@@ -9,6 +9,7 @@ import android.widget.TextView
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.content.pm.PackageManager // build 117: resolveDialerPkg needs it
+import android.content.pm.ApplicationInfo // build 119: isSystemComponent needs it
 import android.net.Uri
 import android.content.SharedPreferences
 import android.graphics.Color
@@ -136,6 +137,7 @@ class PowerBlockService : AccessibilityService() {
     // user can always reach the home screen and make calls.
     private var homePkgs: Set<String>? = null
     private var dialerPkg: String? = null
+    private var launchablePkgs: Set<String>? = null
 
     // Daily limits: foreground time per app, counted without any lock running.
     @Volatile
@@ -1091,6 +1093,33 @@ class PowerBlockService : AccessibilityService() {
         return homePkgs!!
     }
 
+    /** All launchable packages (cached): apps with a home-screen icon. */
+    private fun resolveLaunchablePkgs(): Set<String> {
+        if (launchablePkgs != null) return launchablePkgs!!
+        launchablePkgs = try {
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            packageManager.queryIntentActivities(intent, 0)
+                .mapNotNull { it.activityInfo?.packageName }.toSet()
+        } catch (e: Exception) { emptySet() }
+        return launchablePkgs!!
+    }
+
+    /** True for a system component the user never opens directly — the
+     * navigation gestures, the home-screen smart board, and similar phone
+     * parts. They are system apps (FLAG_SYSTEM) with NO launcher icon, so
+     * they never appear in the app drawer. Blocking them breaks the phone
+     * itself (gestures, home button, smart board). Build 119: this is the
+     * general fix for Vivo's com.vivo.upslide (slide-up navigation) and
+     * com.vivo.hiboard (Smart Launcher board) — their names say nothing
+     * about navigation or launcher, so no name list can catch them all. */
+    private fun isSystemComponent(pkg: String): Boolean {
+        return try {
+            val ai = packageManager.getApplicationInfo(pkg, 0)
+            val isSystem = (ai.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            isSystem && !resolveLaunchablePkgs().contains(pkg)
+        } catch (e: Exception) { false }
+    }
+
     /** The default dialer package (cached): calls must always work. */
     private fun resolveDialerPkg(): String? {
         if (dialerPkg != null) return dialerPkg
@@ -1106,13 +1135,18 @@ class PowerBlockService : AccessibilityService() {
      * whitelist itself, plus PowerLock, the launcher, the dialer and the
      * current keyboard (typing in an allowed app must not count as leaving it).
      * Build 118: SystemUI and the system navigation component are also
-     * always allowed — blocking them breaks gestures and the home button. */
+     * always allowed — blocking them breaks gestures and the home button.
+     * Build 119: any system component with no launcher icon is allowed too
+     * (isSystemComponent) — that is the general fix for Vivo's upslide and
+     * hiboard, whose names do not say navigation or launcher. */
     private fun isWhitelisted(pkg: String): Boolean {
         if (pkg == packageName) return true
         if (wlApps.contains(pkg)) return true
         if (resolveHomePkgs().contains(pkg)) return true
         if (pkg.contains("launcher")) return true
         if (pkg.contains("systemui") || pkg.contains("navigation")) return true
+        if (pkg.contains("upslide") || pkg.contains("hiboard")) return true
+        if (isSystemComponent(pkg)) return true
         if (pkg == resolveDialerPkg()) return true
         if (pkg == currentImePackage()) return true
         return false

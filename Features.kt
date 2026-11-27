@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "118"
+    const val BUILD_ID = "119"
 
     // ---------- extend time (never reduce) ----------
 
@@ -2327,6 +2327,38 @@ fun MainActivity.whitelistCard(): View {
         }
     }
     c.addView(pick, lp(MATCH, dp(48), t = dp(10)))
+    // The chosen apps, listed under the whitelist with their package names
+    // (build 119, user request) — so it is visible which apps stay allowed.
+    val wlPkgs = Extra.whitelistApps(this).sorted()
+    if (wlPkgs.isNotEmpty()) {
+        c.addView(tv(L.t("Allowed apps", "চালু থাকবে এমন অ্যাপ"), 14f, C.text), lp(MATCH, WRAP, t = dp(12)))
+        for (pkg in wlPkgs) {
+            val row = LinearLayout(this)
+            row.orientation = LinearLayout.HORIZONTAL
+            row.gravity = Gravity.CENTER_VERTICAL
+            val icon = ImageView(this)
+            try { icon.setImageDrawable(packageManager.getApplicationIcon(pkg)) } catch (_: Exception) { }
+            row.addView(icon, lp(dp(40), dp(40), r = dp(12)))
+            val texts = LinearLayout(this)
+            texts.orientation = LinearLayout.VERTICAL
+            texts.addView(tv(appLabelFor(pkg), 14f, C.text), lp(MATCH, WRAP))
+            texts.addView(tv(pkg, 11f, C.muted), lp(MATCH, WRAP))
+            row.addView(texts, lp(0, WRAP, weight = 1f))
+            // Remove this app from the whitelist (not during a session).
+            val remove = tv("✕", 18f, C.danger)
+            remove.setPadding(dp(8), dp(8), dp(8), dp(8))
+            if (locked) remove.alpha = 0.3f
+            remove.setOnClickListener {
+                if (locked) return@setOnClickListener
+                val newSet = Extra.whitelistApps(this).toMutableSet()
+                newSet.remove(pkg)
+                Extra.setWhitelistApps(this, newSet)
+                go(4)
+            }
+            row.addView(remove, lp(WRAP, WRAP, l = dp(8)))
+            c.addView(row, lp(MATCH, WRAP, t = dp(8)))
+        }
+    }
     if (count == 0) {
         c.addView(tv(L.t("No apps chosen yet — only the home screen and the phone dialer will work during a lock.", "এখনো কোনো অ্যাপ বাছা হয়নি — লক চলাকালীন শুধু হোম স্ক্রিন আর ফোন ডায়ালার চলবে।"), 12f, C.warn), lp(MATCH, WRAP, t = dp(8)))
     }
