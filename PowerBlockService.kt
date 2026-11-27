@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.widget.TextView
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.content.pm.PackageManager // build 117: resolveLauncherPkg/resolveDialerPkg need it
 import android.net.Uri
 import android.content.SharedPreferences
 import android.graphics.Color
