@@ -42,12 +42,20 @@
         android:label="PowerLock 2"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
-        <!-- Build 132: the launcher icon is an <activity-alias> so it can
-             be hidden during a lock. Disabling the ALIAS hides the icon,
-             but MainActivity itself stays enabled, so the dialer secret
-             code (\*#\*#1#\*#\*) can still launch it via an explicit
-             intent. If the LAUNCHER filter stayed on MainActivity,
-             disabling it would also block the explicit launch. -->
+        <!-- Build 138 (user 2026-11-28 18:20): NO launcher icon at all,
+             ever. The user does not need the icon and wants the app hidden
+             so it cannot be uninstalled from the launcher. The alias is
+             disabled in the manifest by default AND Store.syncLauncherIcon
+             now always disables it (it never re-enables it, lock or no
+             lock). The old lock-gated hide (builds 132–135) never worked
+             on this Vivo + Smart Launcher: Diagnostics said
+             "icon: hidden" but the drawer still showed it. MainActivity
+             itself stays enabled, so the dialer secret code
+             (\*#\*#1#\*#\*) can still launch it via an explicit intent,
+             as can the KeepAlive notification and the secret-shape
+             window (build 137). If the LAUNCHER filter stayed on
+             MainActivity, disabling it would also block the explicit
+             launch. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,7 +65,7 @@
             android:name=".LauncherAlias"
             android:targetActivity=".MainActivity"
             android:exported="true"
-            android:enabled="true"
+            android:enabled="false"
             android:icon="@mipmap/powerlock2_icon"
             android:roundIcon="@mipmap/powerlock2_icon"
             android:label="PowerLock 2">

@@ -228,6 +228,14 @@ class PowerBlockService : AccessibilityService() {
     private var settingsBlockOn = true
     private var lastSettingsScan = 0L
     private var lastSettingsBlock = 0L
+    // Always-on uninstall shield (build 138): even with no lock running,
+    // the PowerLock App info page in Settings must not be usable to
+    // uninstall it — the user asked for a shield that works without a
+    // lock. No toggle: it is part of uninstall protection. When a lock
+    // IS running, the whole-Settings block (build 136) already blocks
+    // all of Settings, so this check only runs while !protecting().
+    private var lastShieldScan = 0L
+    private var lastShieldBlock = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -443,7 +451,7 @@ class PowerBlockService : AccessibilityService() {
             registerCloseDialogs()
             registerSiteBlocked()
             Store.kickService(this)
-            Store.syncLauncherIcon(this) // build 133: enforce the icon state when the service (re)connects
+            Store.syncLauncherIcon(this) // build 138: keep the icon hidden when the service (re)connects
             Scheduler.onAlarm(this)
         } catch (e: Exception) {
             Log.e(TAG, "onServiceConnected failed", e)
@@ -598,6 +606,12 @@ class PowerBlockService : AccessibilityService() {
             // cannot be switched off and the app cannot be uninstalled
             // from Settings. The user asked for a way with no loophole.
             onSettingsBlock(e)
+            // Always-on uninstall shield (build 138): even with no lock
+            // running, the PowerLock App info page in Settings cannot be
+            // used to uninstall it. Gated on !protecting() inside — during
+            // a lock the whole-Settings block above already blocks all of
+            // Settings.
+            onAlwaysOnUninstallShield(e)
             // URL detection (site block, second option) and keyword block
             // (third option): the browser address bar changed, a browser
             // window just opened, or a page loaded in an already-open tab.
@@ -857,6 +871,38 @@ class PowerBlockService : AccessibilityService() {
                 try { n.recycle() } catch (_: Exception) { }
             }
             if (buttonFound && hitPkg != null) return hitPkg
+        }
+        // Build 138 (user 2026-11-28 18:20): the Vivo drawer uninstall
+        // dialog was NOT blocked on video (2026-11-28 15:34). Its title
+        // may not be a single "Uninstall <name>?" node (title "Uninstall"
+        // alone, name in the body), so the title gate above misses it.
+        // Fallback: a real clickable Uninstall button + a Cancel button +
+        // a protected label anywhere in the window text is the uninstall
+        // confirmation dialog — block it. The App info page has no Cancel
+        // button, so it is not caught here (it is covered by the
+        // always-on Settings shield instead); the Play Store page has no
+        // Cancel button either.
+        if (buttonFound && hitPkg == null) {
+            var cancelFound = false
+            for (word in listOf("Cancel", "বাতিল")) {
+                val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
+                for (n in nodes) {
+                    val text = n.text?.toString()?.trim() ?: ""
+                    if (text.equals("Cancel", ignoreCase = true) || text == "বাতিল") cancelFound = true
+                    try { n.recycle() } catch (_: Exception) { }
+                }
+                if (cancelFound) break
+            }
+            if (cancelFound) {
+                val sb = StringBuilder()
+                collectVisibleText(root, sb)
+                if (sb.isNotEmpty()) {
+                    val pageText = normaliseName(sb.toString())
+                    hitPkg = labels.entries.firstOrNull { (_, label) ->
+                        normaliseName(label).length >= 3 && pageText.contains(normaliseName(label))
+                    }?.key
+                }
+            }
         }
         return if (buttonFound && hitPkg != null) hitPkg else null
     }
@@ -1264,6 +1310,106 @@ class PowerBlockService : AccessibilityService() {
             showBlockOverlay(pkg, L.t("Settings is blocked", "সেটিংস ব্লক করা আছে"), L.t("Settings", "Settings"))
         } catch (ex: Exception) {
             Log.e(TAG, "settings block overlay failed", ex)
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
+        handler.removeCallbacks(settingsBack)
+        handler.postDelayed(settingsBack, 100)
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
+    }
+
+    // Exact-text "Uninstall" button gate, shared by the uninstall dialog
+    // matcher and the always-on Settings shield: a Button, a clickable
+    // node, or a TextView inside a clickable row/container (how Vivo
+    // draws its dialog buttons). Plain words on the screen never match —
+    // the text must be exactly "Uninstall" (or the Bengali forms).
+    private fun hasClickableUninstallButton(root: AccessibilityNodeInfo): Boolean {
+        for (word in listOf("Uninstall", "আনইনস্টল")) {
+            val nodes = try { root.findAccessibilityNodeInfosByText(word) } catch (_: Exception) { continue }
+            for (n in nodes) {
+                var found = false
+                try {
+                    val text = n.text?.toString()?.trim() ?: ""
+                    val exact = text.equals("Uninstall", ignoreCase = true) ||
+                        text == "আনইনস্টল" || text == "আনইনস্টল করুন" || text == "আনইনস্টল করো"
+                    if (exact) {
+                        if (n.isClickable) found = true
+                        val cn = n.className?.toString()
+                        if (cn == "android.widget.Button" || cn == "android.widget.ImageButton") found = true
+                        if (!found) {
+                            val p = n.parent
+                            if (p != null) {
+                                if (p.isClickable) found = true
+                                try { p.recycle() } catch (_: Exception) { }
+                            }
+                        }
+                    }
+                } catch (_: Exception) { }
+                try { n.recycle() } catch (_: Exception) { }
+                if (found) return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * Always-on uninstall shield (build 138): even with NO lock running,
+     * the PowerLock App info page in Settings must not be usable to
+     * uninstall the app — the user asked for a shield that works without
+     * a lock ("যাতে আনইনস্টল ... লক ছাড়া কালীন সময়ে কিছু করতে না পারি").
+     * Fires only while !protecting(): during a lock the whole-Settings
+     * block (build 136) already blocks all of Settings, so this check
+     * would only double-block. Match: Settings package + the own label
+     * or package name in the visible text + a clickable Uninstall
+     * button. The App info page is exactly that screen (label +
+     * Uninstall button); the Settings app list has the label but no
+     * Uninstall button, and the Accessibility / permission pages have
+     * neither, so they are not blocked. Escape hatch (deliberate, not
+     * accidental): turn Accessibility OFF first, then uninstall from
+     * Settings — the shield is Accessibility-based, like every other
+     * block here. NOTE: Safe Mode and ADB uninstall remain open — only
+     * Device Owner (factory reset + PC, which the user declined)
+     * closes those too.
+     */
+    private fun onAlwaysOnUninstallShield(e: AccessibilityEvent) {
+        if (protecting()) return
+        val pkg = e.packageName?.toString() ?: return
+        if (!pkg.contains("settings")) return
+        if (pkg == packageName) return
+        val type = e.eventType
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) return
+        val now = SystemClock.uptimeMillis()
+        // content-changed fires constantly while scrolling the Settings
+        // tree — throttle it to 10 ms, like DNS/User/Settings.
+        // State-changed runs at once, so the page never stays visible.
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastShieldScan < 10) return
+        lastShieldScan = now
+        val root = rootInActiveWindow ?: return
+        val sb = StringBuilder()
+        collectVisibleText(root, sb)
+        if (sb.isEmpty()) return
+        val pageText = normaliseName(sb.toString())
+        val ownLabel = try {
+            uninstallProtectLabels()[packageName] ?: ""
+        } catch (_: Exception) { "" }
+        val labelHit = (ownLabel.isNotBlank() && normaliseName(ownLabel).length >= 3 &&
+            pageText.contains(normaliseName(ownLabel))) ||
+            pageText.contains(normaliseName(packageName))
+        if (!labelHit) return
+        if (!hasClickableUninstallButton(root)) return
+        // 200 ms dedup (same as DNS/User/Settings/uninstall): a fast
+        // re-tap must be blocked too
+        if (now - lastShieldBlock < 200) return
+        lastShieldBlock = now
+        Extra.logAttempt(this, "uninstall", packageName, ownLabel.ifBlank { packageName })
+        limitBlockActive = true
+        try {
+            showBlockOverlay(pkg, L.t("Uninstall is blocked", "আনইনস্টল ব্লক করা আছে"), ownLabel.ifBlank { packageName })
+        } catch (ex: Exception) {
+            Log.e(TAG, "uninstall shield overlay failed", ex)
             try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
             return
         }

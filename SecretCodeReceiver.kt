@@ -12,8 +12,12 @@ import android.content.Intent
  * android_secret_code://1; this receiver launches MainActivity via
  * an explicit intent. MainActivity itself stays enabled — only the
  * .LauncherAlias is disabled to hide the icon — so an explicit launch
- * still works. If the dialer does not broadcast SECRET_CODE, or the
- * code is forgotten, the icon returns on its own when the lock ends.
+ * still works.
+ *
+ * Build 138 (user 2026-11-28 18:20): the icon NEVER returns — the
+ * alias is disabled permanently, lock or no lock. The dialer code is
+ * now one of the only ways into the app (the others are the KeepAlive
+ * notification tap and the secret-shape window during a lock).
  */
 class SecretCodeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

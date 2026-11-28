@@ -498,7 +498,7 @@ object Store {
         SiteBlockService.stopIfRunning(ctx) // lock over: the site-block VPN stops
         LockWidget.refresh(ctx)
         PlaceWatcher.sync(ctx) // no session left: stop watching unless the location lock needs it
-        syncLauncherIcon(ctx) // build 132: lock over — show the launcher icon again (unless the location lock still protects)
+        syncLauncherIcon(ctx) // build 138: icon stays hidden, always
     }
 
     /** The running session's unlock destination, or null for a time-only session. */
@@ -602,7 +602,7 @@ object Store {
         SiteBlockService.sync(ctx) // lock started: start the site-block VPN, if enabled
         LockWidget.refresh(ctx)
         kickService(ctx)
-        syncLauncherIcon(ctx) // build 132: lock on — hide the launcher icon
+        syncLauncherIcon(ctx) // build 138: icon stays hidden, always
         return true
     }
 
@@ -625,49 +625,38 @@ object Store {
     fun isLocProtecting(ctx: Context): Boolean = lock(ctx).getBoolean("loc_protecting", false)
 
     /**
-     * Build 132 (user 2026-11-28 13:26): hide the launcher icon while a
-     * lock protects, show it again when no lock is left — so there is no
-     * icon to long-press (and no long-press uninstall menu) during a
-     * lock. The icon is an <activity-alias> (.LauncherAlias) targeting
-     * MainActivity; disabling the ALIAS hides the icon but the activity
-     * stays enabled, so the dialer secret code (*#*#1#*#*) can still
-     * launch it via an explicit intent. Reads the raw lock state
-     * directly (NOT isActive, which would recurse through
-     * finalizeIfExpired). Only touches the PackageManager when the
-     * desired state differs from the current one, so it is cheap to
+     * Build 138 (user 2026-11-28 18:20): the launcher icon is gone for
+     * good — the user does not need it at all and wants the app hidden
+     * so it cannot be uninstalled from the launcher. The .LauncherAlias
+     * is disabled in the manifest by default AND this function now always
+     * disables it: it never re-enables it, lock or no lock. The old
+     * lock-gated hide (builds 132–135) never worked on this Vivo +
+     * Smart Launcher: Diagnostics said "icon: hidden (lock on)" but the
+     * drawer still showed the icon. Entry is now only via the dialer
+     * secret code (*#*#1#*#*), the KeepAlive notification, or the
+     * secret-shape window (build 137). MainActivity stays enabled so
+     * explicit launches still work. Only touches the PackageManager
+     * when the alias is not already disabled, so it stays cheap to
      * call from the lock lifecycle (start / expire / stop / location
-     * change / boot).
+     * change / boot / heartbeat) — those calls now just enforce the
+     * always-hidden state, which also covers an update from build 137
+     * (a component state set by setComponentEnabledSetting survives
+     * an app update, so the alias must be forced off again).
      *
-     * Build 135 (user video 2026-11-28 15:12): the icon did NOT hide
-     * even for a freshly started lock. Two suspects. (1) The alias
-     * ComponentName was hardcoded to "com.powerlock.app" — but the
-     * workflow copies the .kt files into com/example/powerlocks, so
-     * the built app's real package may differ; use ctx.packageName
-     * (whatever the built APK's package actually is) instead.
-     * (2) The old code swallowed every failure silently, so there
-     * was no way to tell whether the disable even ran. Now it logs
-     * the outcome into the Diagnostics log (kind "diag", detail
-     * starting "icon:") only when the state actually changes, and
-     * logs the exception message when the call fails — the user can
-     * send a Diagnostics screenshot to show what happened.
+     * (Old behaviour, builds 132–137: hide while a lock protected,
+     * show again when no lock was left. Removed in 138.)
      */
     fun syncLauncherIcon(ctx: Context) {
         try {
             val pm = ctx.packageManager
             val alias = ComponentName(ctx, ctx.packageName + ".LauncherAlias")
-            val p = lock(ctx)
-            val sessionActive = p.getBoolean("active", false) && sessionTimeLeft(ctx)
-            val protecting = sessionActive || p.getBoolean("loc_protecting", false)
-            val want = if (protecting) PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                       else PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             val cur = try { pm.getComponentEnabledSetting(alias) } catch (_: Exception) { PackageManager.COMPONENT_ENABLED_STATE_DEFAULT }
-            // DEFAULT follows the manifest (enabled), so only DISABLED counts as hidden.
-            val curHidden = cur == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            val wantHidden = want == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            if (curHidden != wantHidden) {
+            // DEFAULT follows the manifest (disabled since build 138), so
+            // only DISABLED counts as hidden.
+            if (cur != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
                 try {
-                    pm.setComponentEnabledSetting(alias, want, PackageManager.DONT_KILL_APP)
-                    Extra.logAttempt(ctx, "diag", ctx.packageName, if (wantHidden) "icon: hidden (lock on)" else "icon: shown (lock off)")
+                    pm.setComponentEnabledSetting(alias, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+                    Extra.logAttempt(ctx, "diag", ctx.packageName, "icon: hidden (always, build 138)")
                 } catch (e: Exception) {
                     Extra.logAttempt(ctx, "diag", ctx.packageName, "icon: FAILED " + (e.message ?: e.toString()))
                 }
@@ -698,7 +687,7 @@ object Store {
         LockWidget.refresh(ctx)
         PlaceWatcher.sync(ctx) // no session left: stop watching unless the location lock needs it
         kickService(ctx)
-        syncLauncherIcon(ctx) // build 132: lock over — show the launcher icon again (unless the location lock still protects)
+        syncLauncherIcon(ctx) // build 138: icon stays hidden, always
     }
 
     fun kickService(ctx: Context) {

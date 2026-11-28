@@ -36,7 +36,7 @@ class KeepAliveService : Service() {
     private fun onHeartbeat() {
         try {
             Store.lock(this).edit().putLong("kas_heartbeat", System.currentTimeMillis()).apply()
-            Store.syncLauncherIcon(this) // build 133: enforce the icon state every 60s (covers a lock already running at install time, and a launcher that re-adds the icon)
+            Store.syncLauncherIcon(this) // build 138: keep the icon hidden, every 60s
             // backup arrival check for a location-unlock session (cheap, last known fix only)
             PlaceWatcher.checkUnlockLastKnown(this)
             LockWidget.refresh(this) // keep the widget countdown fresh while the app is closed
