@@ -218,6 +218,16 @@ class PowerBlockService : AccessibilityService() {
     private var installGuardOn = true
     private var lastInstallScan = 0L
     private var lastInstallBlock = 0L
+    // Whole-Settings block (build 136): during a lock, the Settings app
+    // cannot be opened at all — so Accessibility / Device Admin cannot be
+    // turned off and the app cannot be uninstalled from Settings. The user
+    // asked for a way with no loophole: the old guards only blocked
+    // specific Settings pages, but the protection itself could be switched
+    // off in seconds from Settings. Lock-gated (only fires while
+    // protecting()). Toggle: "settings_block".
+    private var settingsBlockOn = true
+    private var lastSettingsScan = 0L
+    private var lastSettingsBlock = 0L
     @Volatile
     private var urlCheckRunning = false
     private var siteReceiverOn = false
@@ -371,6 +381,7 @@ class PowerBlockService : AccessibilityService() {
     private val uninstallBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     private val dnsBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     private val userBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
+    private val settingsBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     private val installBack = Runnable { try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { } }
     // Build 107 "not working" fix (1 of 3): the uninstall block screen
     // auto-hides after 3 s. The screen is a WindowManager overlay, and
@@ -487,6 +498,7 @@ class PowerBlockService : AccessibilityService() {
         dnsGuardOn = st.getBoolean("dns_guard", true) // DNS change block (build 108): always-on
         userGuardOn = st.getBoolean("user_guard", true) // Guest user block (build 111): always-on
         installGuardOn = st.getBoolean("install_guard", true) // Install block (build 120): lock-gated
+        settingsBlockOn = st.getBoolean("settings_block", true) // Whole-Settings block (build 136): lock-gated
         focusApps = (st.getString("focus_apps", "") ?: "").split(",").filter { it.isNotEmpty() }.toSet()
         abOn = st.getBoolean("ab_on", true)
         abFull = Extra.appBlockFull(this)
@@ -581,6 +593,11 @@ class PowerBlockService : AccessibilityService() {
             // Store installs are always allowed (they never show the system
             // installer screen), and updates to other apps are allowed.
             onInstallGuard(e)
+            // Whole-Settings block (build 136): lock-gated — during a lock
+            // the Settings app cannot be opened at all, so the protection
+            // cannot be switched off and the app cannot be uninstalled
+            // from Settings. The user asked for a way with no loophole.
+            onSettingsBlock(e)
             // URL detection (site block, second option) and keyword block
             // (third option): the browser address bar changed, a browser
             // window just opened, or a page loaded in an already-open tab.
@@ -1206,6 +1223,52 @@ class PowerBlockService : AccessibilityService() {
         }
         handler.removeCallbacks(userBack)
         handler.postDelayed(userBack, 100)
+        handler.removeCallbacks(uninstallOverlayHide)
+        handler.postDelayed(uninstallOverlayHide, 3000)
+    }
+
+    /**
+     * Whole-Settings block (build 136): during a lock, the Settings app
+     * cannot be opened at all. The old guards only blocked specific
+     * Settings pages (Private DNS, Multiple users) — but the protection
+     * itself could be switched off in seconds from Settings (Accessibility
+     * OFF, Device Admin OFF, then uninstall from Apps). Blocking the whole
+     * Settings app during a lock closes that hole. Lock-gated: only fires
+     * while protecting(). Toggle: "settings_block" in Settings.
+     * NOTE: a regular app cannot hide from Settings, and this block is
+     * Accessibility-based — Safe Mode and ADB uninstall from a PC remain
+     * open. Only Device Owner (factory reset + PC) closes those too.
+     */
+    private fun onSettingsBlock(e: AccessibilityEvent) {
+        if (!settingsBlockOn) return
+        if (!protecting()) return
+        val pkg = e.packageName?.toString() ?: return
+        if (!pkg.contains("settings")) return
+        if (pkg == packageName) return
+        val type = e.eventType
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) return
+        val now = SystemClock.uptimeMillis()
+        // content-changed fires constantly while scrolling the Settings
+        // tree — throttle it to 10 ms, like DNS/User. State-changed runs
+        // at once, so Settings never stays visible.
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && now - lastSettingsScan < 10) return
+        lastSettingsScan = now
+        // 200 ms dedup (same as DNS/User/uninstall): a fast re-tap must be blocked too
+        if (now - lastSettingsBlock < 200) return
+        lastSettingsBlock = now
+        Extra.logAttempt(this, "settings", pkg, "Settings")
+        limitBlockActive = true
+        try {
+            showBlockOverlay(pkg, L.t("Settings is blocked", "সেটিংস ব্লক করা আছে"), L.t("Settings", "Settings"))
+        } catch (ex: Exception) {
+            Log.e(TAG, "settings block overlay failed", ex)
+            try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
+            return
+        }
+        handler.removeCallbacks(settingsBack)
+        handler.postDelayed(settingsBack, 100)
         handler.removeCallbacks(uninstallOverlayHide)
         handler.postDelayed(uninstallOverlayHide, 3000)
     }

@@ -2294,6 +2294,22 @@ class SettingsScreen(private val a: MainActivity) {
             ) { v -> prefs.edit().putBoolean("install_guard", v).apply() },
             lp(MATCH, WRAP, t = a.dp(2))
         )
+        // Whole-Settings block (build 136): during a lock, the Settings app
+        // cannot be opened at all — so Accessibility / Device Admin cannot
+        // be turned off and the app cannot be uninstalled from Settings.
+        // The user asked for a way with no loophole: the old guards only
+        // blocked specific Settings pages, but the protection itself could
+        // be switched off in seconds from Settings. Build 121 pattern:
+        // locked during a session, like DNS.
+        strictCard.addView(
+            glowOption(
+                L.t("Whole Settings block", "পুরো Settings ব্লক"),
+                L.t("Settings cannot be opened during a lock — protection cannot be turned off.", "লক চলাকালীন Settings খোলা যাবে না — সুরক্ষা বন্ধ করা যাবে না।"),
+                prefs.getBoolean("settings_block", true),
+                locked
+            ) { v -> prefs.edit().putBoolean("settings_block", v).apply() },
+            lp(MATCH, WRAP, t = a.dp(2))
+        )
         val note = if (locked) L.t("Locked while a session is active.", "সেশন চলাকালীন বদলানো যাবে না।")
         else L.t("Changes apply from the next session.", "পরিবর্তন পরের সেশন থেকে কার্যকর হবে।")
         strictCard.addView(a.tv(note, 12f, if (locked) C.warn else C.muted), lp(MATCH, WRAP, t = a.dp(8)))
