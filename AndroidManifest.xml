@@ -65,7 +65,7 @@
             android:name=".LauncherAlias"
             android:targetActivity=".MainActivity"
             android:exported="true"
-            android:enabled="false"
+            android:enabled="true"
             android:icon="@mipmap/powerlock2_icon"
             android:roundIcon="@mipmap/powerlock2_icon"
             android:label="PowerLock 2">

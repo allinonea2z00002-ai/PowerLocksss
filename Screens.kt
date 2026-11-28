@@ -2313,6 +2313,21 @@ class SettingsScreen(private val a: MainActivity) {
         val note = if (locked) L.t("Locked while a session is active.", "সেশন চলাকালীন বদলানো যাবে না।")
         else L.t("Changes apply from the next session.", "পরিবর্তন পরের সেশন থেকে কার্যকর হবে।")
         strictCard.addView(a.tv(note, 12f, if (locked) C.warn else C.muted), lp(MATCH, WRAP, t = a.dp(8)))
+        // Hide icon toggle (build 139): ON hides the launcher icon
+        // completely (like build 138), OFF brings it back as a normal
+        // app. Deliberately NOT locked during a session — the
+        // always-on uninstall block (build 138) is the real
+        // protection, so showing the icon mid-lock is safe. Toggling
+        // applies immediately via Store.syncLauncherIcon.
+        strictCard.addView(
+            glowOption(
+                L.t("Hide icon", "আইকন লুকান"),
+                L.t("No launcher icon — open the app with the dialer code *#*#1#*#*. Changeable anytime.", "লঞ্চারে আইকন থাকবে না — অ্যাপ খুলতে ডায়ালার কোড *#*#1#*#* লাগবে। যেকোনো সময় বদলানো যাবে।"),
+                prefs.getBoolean("hide_icon", true),
+                false
+            ) { v -> prefs.edit().putBoolean("hide_icon", v).apply(); Store.syncLauncherIcon(a) },
+            lp(MATCH, WRAP, t = a.dp(2))
+        )
         col.addView(strictCard, lp(MATCH, WRAP, b = a.dp(12)))
 
         // location lock first, then focus mode (defined in Features.kt)

@@ -498,7 +498,7 @@ object Store {
         SiteBlockService.stopIfRunning(ctx) // lock over: the site-block VPN stops
         LockWidget.refresh(ctx)
         PlaceWatcher.sync(ctx) // no session left: stop watching unless the location lock needs it
-        syncLauncherIcon(ctx) // build 138: icon stays hidden, always
+        syncLauncherIcon(ctx) // build 139: enforce the hide_icon toggle
     }
 
     /** The running session's unlock destination, or null for a time-only session. */
@@ -602,7 +602,7 @@ object Store {
         SiteBlockService.sync(ctx) // lock started: start the site-block VPN, if enabled
         LockWidget.refresh(ctx)
         kickService(ctx)
-        syncLauncherIcon(ctx) // build 138: icon stays hidden, always
+        syncLauncherIcon(ctx) // build 139: enforce the hide_icon toggle
         return true
     }
 
@@ -625,38 +625,44 @@ object Store {
     fun isLocProtecting(ctx: Context): Boolean = lock(ctx).getBoolean("loc_protecting", false)
 
     /**
-     * Build 138 (user 2026-11-28 18:20): the launcher icon is gone for
-     * good — the user does not need it at all and wants the app hidden
-     * so it cannot be uninstalled from the launcher. The .LauncherAlias
-     * is disabled in the manifest by default AND this function now always
-     * disables it: it never re-enables it, lock or no lock. The old
-     * lock-gated hide (builds 132–135) never worked on this Vivo +
-     * Smart Launcher: Diagnostics said "icon: hidden (lock on)" but the
-     * drawer still showed the icon. Entry is now only via the dialer
+     * Build 139 (user 2026-11-28 19:19): the icon hide is now a toggle
+     * ("hide_icon" in settings, default true, so a fresh install
+     * behaves like build 138). ON: the .LauncherAlias stays disabled,
+     * the app has no launcher icon at all — entry only via the dialer
      * secret code (*#*#1#*#*), the KeepAlive notification, or the
-     * secret-shape window (build 137). MainActivity stays enabled so
-     * explicit launches still work. Only touches the PackageManager
-     * when the alias is not already disabled, so it stays cheap to
-     * call from the lock lifecycle (start / expire / stop / location
-     * change / boot / heartbeat) — those calls now just enforce the
-     * always-hidden state, which also covers an update from build 137
-     * (a component state set by setComponentEnabledSetting survives
-     * an app update, so the alias must be forced off again).
+     * secret-shape window (build 137). OFF: the alias is enabled and
+     * the app is a normal app with an icon again. The toggle is
+     * changeable anytime, even during a session — the always-on
+     * uninstall block (build 138) is the real protection, so showing
+     * the icon mid-lock is safe. The manifest enables the alias by
+     * default since 139, so the toggle (not the manifest) decides.
+     * Only touches the PackageManager when the alias is not already
+     * in the wanted state, so it stays cheap to call from the lock
+     * lifecycle (start / expire / stop / location change / boot /
+     * heartbeat) — those calls enforce the toggle state, which also
+     * covers an update from build 138 (a component state set by
+     * setComponentEnabledSetting survives an app update, so the alias
+     * must be forced to the toggle state again).
      *
-     * (Old behaviour, builds 132–137: hide while a lock protected,
-     * show again when no lock was left. Removed in 138.)
+     * (Old behaviour, build 138: icon always hidden, no toggle.
+     * Builds 132–137: hide while a lock protected, show again when
+     * no lock was left.)
      */
     fun syncLauncherIcon(ctx: Context) {
         try {
             val pm = ctx.packageManager
             val alias = ComponentName(ctx, ctx.packageName + ".LauncherAlias")
+            val hide = settings(ctx).getBoolean("hide_icon", true)
+            val want = if (hide) PackageManager.COMPONENT_ENABLED_STATE_DISABLED else PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             val cur = try { pm.getComponentEnabledSetting(alias) } catch (_: Exception) { PackageManager.COMPONENT_ENABLED_STATE_DEFAULT }
-            // DEFAULT follows the manifest (disabled since build 138), so
-            // only DISABLED counts as hidden.
-            if (cur != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
+            // DEFAULT follows the manifest (enabled since build 139), so
+            // DEFAULT counts as shown when hide_icon is off.
+            val curIsHidden = cur == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            val curIsShown = cur == PackageManager.COMPONENT_ENABLED_STATE_ENABLED || cur == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+            if ((hide && !curIsHidden) || (!hide && !curIsShown)) {
                 try {
-                    pm.setComponentEnabledSetting(alias, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
-                    Extra.logAttempt(ctx, "diag", ctx.packageName, "icon: hidden (always, build 138)")
+                    pm.setComponentEnabledSetting(alias, want, PackageManager.DONT_KILL_APP)
+                    Extra.logAttempt(ctx, "diag", ctx.packageName, if (hide) "icon: hidden (hide_icon on)" else "icon: shown (hide_icon off)")
                 } catch (e: Exception) {
                     Extra.logAttempt(ctx, "diag", ctx.packageName, "icon: FAILED " + (e.message ?: e.toString()))
                 }
@@ -687,7 +693,7 @@ object Store {
         LockWidget.refresh(ctx)
         PlaceWatcher.sync(ctx) // no session left: stop watching unless the location lock needs it
         kickService(ctx)
-        syncLauncherIcon(ctx) // build 138: icon stays hidden, always
+        syncLauncherIcon(ctx) // build 139: enforce the hide_icon toggle
     }
 
     fun kickService(ctx: Context) {
