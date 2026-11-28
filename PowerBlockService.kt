@@ -905,8 +905,10 @@ class PowerBlockService : AccessibilityService() {
 
     // Build 130 (diagnostic, user approved 2026-11-28 06:57): when the
     // long-press popup is open, record which home-screen icon (if any)
-    // the launcher marks as selected / focused / pressed, so we can see
+    // the launcher marks as selected / focused / checked, so we can see
     // whether the pressed icon can be identified without position math.
+    // (AccessibilityNodeInfo has no isPressed — that was the build 130
+    // compile error; sel/foc/chk are the states it does expose.)
     // Logged to Diagnostics (kind "diag"), throttled to once per 5 s.
     // Read-only: it never blocks anything. The build 129 position-based
     // long-press block stays in place as the fallback.
@@ -927,13 +929,13 @@ class PowerBlockService : AccessibilityService() {
             if (t.isNotEmpty() && t.length <= 40) {
                 val sel = try { n.isSelected } catch (_: Exception) { false }
                 val foc = try { n.isFocused } catch (_: Exception) { false }
-                val prs = try { n.isPressed } catch (_: Exception) { false }
-                if (sel || foc || prs) {
+                val chk = try { n.isChecked } catch (_: Exception) { false }
+                if (sel || foc || chk) {
                     if (marked.isNotEmpty()) marked.append(" | ")
-                    marked.append(t).append(": sel=").append(sel).append(" foc=").append(foc).append(" prs=").append(prs)
+                    marked.append(t).append(": sel=").append(sel).append(" foc=").append(foc).append(" chk=").append(chk)
                 }
                 if (t == ownLabel) {
-                    own.append(t).append(": sel=").append(sel).append(" foc=").append(foc).append(" prs=").append(prs)
+                    own.append(t).append(": sel=").append(sel).append(" foc=").append(foc).append(" chk=").append(chk)
                 }
             }
             val cc = try { n.childCount } catch (_: Exception) { 0 }
