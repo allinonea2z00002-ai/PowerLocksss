@@ -893,6 +893,7 @@ class PowerBlockService : AccessibilityService() {
                 val screenH = try { resources.displayMetrics.heightPixels } catch (_: Exception) { 0 }
                 val iconCenterY = (ir.top + ir.bottom) / 2
                 val popupBelow = screenH <= 0 || iconCenterY < screenH * 2 / 3
+                val uCenterX = (ur.left + ur.right) / 2
                 val below = ur.top >= ir.bottom - 50 && ur.top - ir.bottom <= 200
                 val above = ur.bottom <= ir.top + 50 && ir.top - ur.bottom <= 200
                 val hClose = uCenterX >= ir.left - 60 && uCenterX <= ir.right + 60
