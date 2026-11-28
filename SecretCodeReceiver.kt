@@ -5,11 +5,11 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Build 132 (user 2026-11-28 13:26): dial *#*#1234#*#* in the phone
+ * Build 132 (user 2026-11-28 13:26): dial *#*#1#*#* in the phone
  * dialer to open PowerLock 2, even while its launcher icon is hidden
  * during a lock. The dialer broadcasts
  * android.provider.Telephony.SECRET_CODE with the data URI
- * android_secret_code://1234; this receiver launches MainActivity via
+ * android_secret_code://1; this receiver launches MainActivity via
  * an explicit intent. MainActivity itself stays enabled — only the
  * .LauncherAlias is disabled to hide the icon — so an explicit launch
  * still works. If the dialer does not broadcast SECRET_CODE, or the

@@ -45,7 +45,7 @@
         <!-- Build 132: the launcher icon is an <activity-alias> so it can
              be hidden during a lock. Disabling the ALIAS hides the icon,
              but MainActivity itself stays enabled, so the dialer secret
-             code (*#*#1234#*#*) can still launch it via an explicit
+             code (\*#\*#1#\*#\*) can still launch it via an explicit
              intent. If the LAUNCHER filter stayed on MainActivity,
              disabling it would also block the explicit launch. -->
         <activity
@@ -67,7 +67,7 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Build 132: dial *#*#1234#*#* in the phone dialer to open
+        <!-- Build 132: dial \*#\*#1#\*#\* in the phone dialer to open
              PowerLock 2 even while its launcher icon is hidden during a
              lock. The dialer broadcasts SECRET_CODE; this receiver
              launches MainActivity. -->
@@ -76,7 +76,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SECRET_CODE" />
-                <data android:scheme="android_secret_code" android:host="1234" />
+                <data android:scheme="android_secret_code" android:host="1" />
             </intent-filter>
         </receiver>
 
