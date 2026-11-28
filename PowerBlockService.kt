@@ -903,6 +903,50 @@ class PowerBlockService : AccessibilityService() {
         return null
     }
 
+    // Build 130 (diagnostic, user approved 2026-11-28 06:57): when the
+    // long-press popup is open, record which home-screen icon (if any)
+    // the launcher marks as selected / focused / pressed, so we can see
+    // whether the pressed icon can be identified without position math.
+    // Logged to Diagnostics (kind "diag"), throttled to once per 5 s.
+    // Read-only: it never blocks anything. The build 129 position-based
+    // long-press block stays in place as the fallback.
+    private var lastPopupDiagAt = 0L
+    private fun logPopupIconStates(root: AccessibilityNodeInfo, labels: Map<String, String>) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastPopupDiagAt < 5000) return
+        val ownLabel = labels[packageName] ?: ""
+        // Is the popup open? (an "Uninstall" menu item is present)
+        val uninstallNodes = try { root.findAccessibilityNodeInfosByText("Uninstall") } catch (_: Exception) { null }
+        if (uninstallNodes.isNullOrEmpty()) return
+        lastPopupDiagAt = now
+        val marked = StringBuilder()
+        val own = StringBuilder()
+        fun walk(n: AccessibilityNodeInfo, depth: Int) {
+            if (depth > 12) return
+            val t = try { n.text?.toString()?.trim() ?: "" } catch (_: Exception) { "" }
+            if (t.isNotEmpty() && t.length <= 40) {
+                val sel = try { n.isSelected } catch (_: Exception) { false }
+                val foc = try { n.isFocused } catch (_: Exception) { false }
+                val prs = try { n.isPressed } catch (_: Exception) { false }
+                if (sel || foc || prs) {
+                    if (marked.isNotEmpty()) marked.append(" | ")
+                    marked.append(t).append(": sel=").append(sel).append(" foc=").append(foc).append(" prs=").append(prs)
+                }
+                if (t == ownLabel) {
+                    own.append(t).append(": sel=").append(sel).append(" foc=").append(foc).append(" prs=").append(prs)
+                }
+            }
+            val cc = try { n.childCount } catch (_: Exception) { 0 }
+            for (i in 0 until cc) {
+                val c = try { n.getChild(i) } catch (_: Exception) { null } ?: continue
+                walk(c, depth + 1)
+            }
+        }
+        try { walk(root, 0) } catch (_: Exception) { }
+        val detail = "popup open; marked=[" + marked.toString() + "]; PowerLock=[" + own.toString() + "]"
+        Extra.logAttempt(this, "diag", packageName, detail)
+    }
+
     private fun onUninstallAttempt(e: AccessibilityEvent) {
         val type = e.eventType
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
@@ -984,6 +1028,15 @@ class PowerBlockService : AccessibilityService() {
             // the app (Uninstall "BlockP"?).
             if (hitPkg == null) {
                 hitPkg = findUninstallTarget(root, labels)
+            }
+            // Build 130 diagnostic: log which icon (if any) the launcher
+            // marks when the popup is open. Runs in the launcher even
+            // without a lock, so the user can test with the lock off.
+            // Read-only — it never blocks anything.
+            val isLauncherDiag = resolveHomePkgs().contains(pkg) ||
+                pkg.contains("launcher") || pkg.contains("hiboard")
+            if (isLauncherDiag) {
+                logPopupIconStates(root, labels)
             }
             // Build 126 (user screenshot 2026-11-27 23:39): the long-press
             // block must fire ONLY for PowerLock's own popup, and ONLY
