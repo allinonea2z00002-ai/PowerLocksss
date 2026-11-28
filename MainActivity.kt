@@ -158,6 +158,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Store.syncLauncherIcon(this) // build 133: enforce the icon state whenever the app opens (a lock already running at install time never passed through startSession, so the icon was never hidden)
         handler.post(ticker)
         if (tab == 3) go(3, false) // refresh permission status after returning from system settings
     }

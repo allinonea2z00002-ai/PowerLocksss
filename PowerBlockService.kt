@@ -432,6 +432,7 @@ class PowerBlockService : AccessibilityService() {
             registerCloseDialogs()
             registerSiteBlocked()
             Store.kickService(this)
+            Store.syncLauncherIcon(this) // build 133: enforce the icon state when the service (re)connects
             Scheduler.onAlarm(this)
         } catch (e: Exception) {
             Log.e(TAG, "onServiceConnected failed", e)

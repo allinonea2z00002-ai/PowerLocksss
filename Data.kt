@@ -630,7 +630,7 @@ object Store {
      * icon to long-press (and no long-press uninstall menu) during a
      * lock. The icon is an <activity-alias> (.LauncherAlias) targeting
      * MainActivity; disabling the ALIAS hides the icon but the activity
-     * stays enabled, so the dialer secret code (*#*#1234#*#*) can still
+     * stays enabled, so the dialer secret code (*#*#1#*#*) can still
      * launch it via an explicit intent. Reads the raw lock state
      * directly (NOT isActive, which would recurse through
      * finalizeIfExpired). Only touches the PackageManager when the
