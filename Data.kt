@@ -637,11 +637,24 @@ object Store {
      * desired state differs from the current one, so it is cheap to
      * call from the lock lifecycle (start / expire / stop / location
      * change / boot).
+     *
+     * Build 135 (user video 2026-11-28 15:12): the icon did NOT hide
+     * even for a freshly started lock. Two suspects. (1) The alias
+     * ComponentName was hardcoded to "com.powerlock.app" — but the
+     * workflow copies the .kt files into com/example/powerlocks, so
+     * the built app's real package may differ; use ctx.packageName
+     * (whatever the built APK's package actually is) instead.
+     * (2) The old code swallowed every failure silently, so there
+     * was no way to tell whether the disable even ran. Now it logs
+     * the outcome into the Diagnostics log (kind "diag", detail
+     * starting "icon:") only when the state actually changes, and
+     * logs the exception message when the call fails — the user can
+     * send a Diagnostics screenshot to show what happened.
      */
     fun syncLauncherIcon(ctx: Context) {
         try {
             val pm = ctx.packageManager
-            val alias = ComponentName(ctx, "com.powerlock.app.LauncherAlias")
+            val alias = ComponentName(ctx, ctx.packageName + ".LauncherAlias")
             val p = lock(ctx)
             val sessionActive = p.getBoolean("active", false) && sessionTimeLeft(ctx)
             val protecting = sessionActive || p.getBoolean("loc_protecting", false)
@@ -652,7 +665,12 @@ object Store {
             val curHidden = cur == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             val wantHidden = want == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             if (curHidden != wantHidden) {
-                pm.setComponentEnabledSetting(alias, want, PackageManager.DONT_KILL_APP)
+                try {
+                    pm.setComponentEnabledSetting(alias, want, PackageManager.DONT_KILL_APP)
+                    Extra.logAttempt(ctx, "diag", ctx.packageName, if (wantHidden) "icon: hidden (lock on)" else "icon: shown (lock off)")
+                } catch (e: Exception) {
+                    Extra.logAttempt(ctx, "diag", ctx.packageName, "icon: FAILED " + (e.message ?: e.toString()))
+                }
             }
         } catch (_: Exception) { }
     }
