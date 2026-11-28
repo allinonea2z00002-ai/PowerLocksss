@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -497,6 +498,7 @@ object Store {
         SiteBlockService.stopIfRunning(ctx) // lock over: the site-block VPN stops
         LockWidget.refresh(ctx)
         PlaceWatcher.sync(ctx) // no session left: stop watching unless the location lock needs it
+        syncLauncherIcon(ctx) // build 132: lock over — show the launcher icon again (unless the location lock still protects)
     }
 
     /** The running session's unlock destination, or null for a time-only session. */
@@ -600,6 +602,7 @@ object Store {
         SiteBlockService.sync(ctx) // lock started: start the site-block VPN, if enabled
         LockWidget.refresh(ctx)
         kickService(ctx)
+        syncLauncherIcon(ctx) // build 132: lock on — hide the launcher icon
         return true
     }
 
@@ -616,9 +619,43 @@ object Store {
      */
     fun setLocProtecting(ctx: Context, on: Boolean) {
         lock(ctx).edit().putBoolean("loc_protecting", on).apply()
+        syncLauncherIcon(ctx)
     }
 
     fun isLocProtecting(ctx: Context): Boolean = lock(ctx).getBoolean("loc_protecting", false)
+
+    /**
+     * Build 132 (user 2026-11-28 13:26): hide the launcher icon while a
+     * lock protects, show it again when no lock is left — so there is no
+     * icon to long-press (and no long-press uninstall menu) during a
+     * lock. The icon is an <activity-alias> (.LauncherAlias) targeting
+     * MainActivity; disabling the ALIAS hides the icon but the activity
+     * stays enabled, so the dialer secret code (*#*#1234#*#*) can still
+     * launch it via an explicit intent. Reads the raw lock state
+     * directly (NOT isActive, which would recurse through
+     * finalizeIfExpired). Only touches the PackageManager when the
+     * desired state differs from the current one, so it is cheap to
+     * call from the lock lifecycle (start / expire / stop / location
+     * change / boot).
+     */
+    fun syncLauncherIcon(ctx: Context) {
+        try {
+            val pm = ctx.packageManager
+            val alias = ComponentName(ctx, "com.powerlock.app.LauncherAlias")
+            val p = lock(ctx)
+            val sessionActive = p.getBoolean("active", false) && sessionTimeLeft(ctx)
+            val protecting = sessionActive || p.getBoolean("loc_protecting", false)
+            val want = if (protecting) PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                       else PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            val cur = try { pm.getComponentEnabledSetting(alias) } catch (_: Exception) { PackageManager.COMPONENT_ENABLED_STATE_DEFAULT }
+            // DEFAULT follows the manifest (enabled), so only DISABLED counts as hidden.
+            val curHidden = cur == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            val wantHidden = want == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            if (curHidden != wantHidden) {
+                pm.setComponentEnabledSetting(alias, want, PackageManager.DONT_KILL_APP)
+            }
+        } catch (_: Exception) { }
+    }
 
     /**
      * [force] is only for the location lock: leaving/arriving ends the session even in strict
@@ -643,6 +680,7 @@ object Store {
         LockWidget.refresh(ctx)
         PlaceWatcher.sync(ctx) // no session left: stop watching unless the location lock needs it
         kickService(ctx)
+        syncLauncherIcon(ctx) // build 132: lock over — show the launcher icon again (unless the location lock still protects)
     }
 
     fun kickService(ctx: Context) {

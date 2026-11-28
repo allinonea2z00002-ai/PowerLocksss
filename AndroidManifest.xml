@@ -42,15 +42,43 @@
         android:label="PowerLock 2"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
+        <!-- Build 132: the launcher icon is an <activity-alias> so it can
+             be hidden during a lock. Disabling the ALIAS hides the icon,
+             but MainActivity itself stays enabled, so the dialer secret
+             code (*#*#1234#*#*) can still launch it via an explicit
+             intent. If the LAUNCHER filter stayed on MainActivity,
+             disabling it would also block the explicit launch. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity-alias
+            android:name=".LauncherAlias"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:icon="@mipmap/powerlock2_icon"
+            android:roundIcon="@mipmap/powerlock2_icon"
+            android:label="PowerLock 2">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <!-- Build 132: dial *#*#1234#*#* in the phone dialer to open
+             PowerLock 2 even while its launcher icon is hidden during a
+             lock. The dialer broadcasts SECRET_CODE; this receiver
+             launches MainActivity. -->
+        <receiver
+            android:name=".SecretCodeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SECRET_CODE" />
+                <data android:scheme="android_secret_code" android:host="1234" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".MapActivity"
