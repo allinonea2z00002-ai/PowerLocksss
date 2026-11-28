@@ -2329,6 +2329,8 @@ class SettingsScreen(private val a: MainActivity) {
         } else {
             col.addView(a.artPadCard(), lp(MATCH, WRAP, b = a.dp(12)))
         }
+        // build 137: the secret shape for the hidden window (draw twice to set)
+        col.addView(a.winShapeCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.uninstallBlockCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.uninstallProtectCard(), lp(MATCH, WRAP, b = a.dp(12)))
         col.addView(a.lockProfilesCard(), lp(MATCH, WRAP, b = a.dp(12)))

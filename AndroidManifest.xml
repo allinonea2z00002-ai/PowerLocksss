@@ -85,6 +85,16 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
+        <!-- Build 137: the secret-shape window. The notification opens it
+             during a lock; drawing the secret shape shows the PowerLock
+             icon in our own view (no launcher popup, no Uninstall option).
+             Kept out of Recents so the pad does not linger there. -->
+        <activity
+            android:name=".SecretWindowActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
         <activity
             android:name=".BlocklistActivity"
             android:exported="false"

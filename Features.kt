@@ -91,7 +91,7 @@ object Extra {
 
     /** Build number, bumped on every push — shown in Settings so the user can
      * confirm which build is installed. A String because L.num takes a String. */
-    const val BUILD_ID = "136"
+    const val BUILD_ID = "137"
 
     // ---------- extend time (never reduce) ----------
 
@@ -549,6 +549,17 @@ object Extra {
 
     fun setArtRevealed(ctx: Context, v: Boolean) {
         Store.settings(ctx).edit().putBoolean("art_revealed", v).apply()
+    }
+
+    // ---------- secret-shape window (build 137) ----------
+
+    /** The stored secret shape for the hidden window, as 32 normalized points "x,y;x,y;..." — null when not set yet. */
+    fun winSecret(ctx: Context): String? = Store.settings(ctx).getString("win_secret", null)
+
+    fun setWinSecret(ctx: Context, secret: String?) {
+        val e = Store.settings(ctx).edit()
+        if (secret == null) e.remove("win_secret") else e.putString("win_secret", secret)
+        e.apply()
     }
 
     /** Blocked keywords (lowercase, trimmed). Defaults apply until the user saves a list. */
@@ -1533,18 +1544,18 @@ fun MainActivity.siteBlockCard(): View {
  * their average point distance is small. No rotation normalisation: the
  * user draws the same way each time, and rotating would let a different
  * shape match. */
-private const val ART_POINTS = 32
-private const val ART_MATCH_DIST = 30f // on a 200x200 box
-private const val ART_MIN_POINTS = 10
+const val ART_POINTS = 32
+const val ART_MATCH_DIST = 30f // on a 200x200 box
+const val ART_MIN_POINTS = 10
 
-private fun artDist(a: PointF, b: PointF): Float {
+fun artDist(a: PointF, b: PointF): Float {
     val dx = a.x - b.x
     val dy = a.y - b.y
     return sqrt(dx * dx + dy * dy)
 }
 
 /** Resample a freehand path to exactly [n] evenly spaced points. */
-private fun artResample(pts: List<PointF>, n: Int = ART_POINTS): List<PointF> {
+fun artResample(pts: List<PointF>, n: Int = ART_POINTS): List<PointF> {
     if (pts.isEmpty()) return emptyList()
     if (pts.size == 1) return List(n) { PointF(pts[0].x, pts[0].y) }
     val work = pts.toMutableList()
@@ -1581,7 +1592,7 @@ private fun artResample(pts: List<PointF>, n: Int = ART_POINTS): List<PointF> {
 }
 
 /** Move the centroid to (0,0) and scale the bounding box to 200x200. */
-private fun artNormalize(pts: List<PointF>): List<PointF> {
+fun artNormalize(pts: List<PointF>): List<PointF> {
     if (pts.isEmpty()) return pts
     var cx = 0f
     var cy = 0f
@@ -1607,10 +1618,10 @@ private fun artNormalize(pts: List<PointF>): List<PointF> {
     return pts.map { PointF((it.x - cx) * s, (it.y - cy) * s) }
 }
 
-private fun artEncode(pts: List<PointF>): String =
+fun artEncode(pts: List<PointF>): String =
     pts.joinToString(";") { "${String.format(Locale.US, "%.1f", it.x)},${String.format(Locale.US, "%.1f", it.y)}" }
 
-private fun artDecode(s: String): List<PointF> {
+fun artDecode(s: String): List<PointF> {
     val out = ArrayList<PointF>()
     for (part in s.split(";")) {
         val xy = part.split(",")
@@ -1623,7 +1634,7 @@ private fun artDecode(s: String): List<PointF> {
 }
 
 /** Average point distance between a fresh drawing and the stored secret. */
-private fun artMatchScore(drawn: List<PointF>, secret: List<PointF>): Float {
+fun artMatchScore(drawn: List<PointF>, secret: List<PointF>): Float {
     if (drawn.size != ART_POINTS || secret.size != ART_POINTS) return Float.MAX_VALUE
     var sum = 0f
     for (i in drawn.indices) sum += artDist(drawn[i], secret[i])
@@ -1632,7 +1643,7 @@ private fun artMatchScore(drawn: List<PointF>, secret: List<PointF>): Float {
 
 /** A plain drawing pad. Reports the accumulated points on every finger-up;
  * the caller decides what a drawing means (set the secret, or unlock). */
-private class ArtPadView(ctx: Context) : View(ctx) {
+class ArtPadView(ctx: Context) : View(ctx) {
     var onStrokeDone: ((List<PointF>) -> Unit)? = null
     private val paths = ArrayList<Path>()
     private var curPath: Path? = null
@@ -1760,6 +1771,84 @@ fun MainActivity.artPadCard(): View {
         pad.clear()
     }
     c.addView(clear, lp(MATCH, dp(48), t = dp(10)))
+    return c
+}
+
+/**
+ * Build 137 (user 2026-11-28 17:35, voice call): the secret shape for the
+ * hidden window. Draw a shape twice to set it as the key — the same
+ * $1-style matcher as the art pad. During a lock, tapping the
+ * notification opens a drawing pad; drawing this shape opens a window
+ * with the PowerLock icon inside. The window is our own view, not the
+ * launcher, so long-pressing the icon shows no Uninstall option. Until
+ * a shape is set, any drawing on the pad opens the window.
+ */
+fun MainActivity.winShapeCard(): View {
+    val c = card()
+    c.addView(section(L.t("Secret window", "গোপন জানালা")))
+    val secret = Extra.winSecret(this)
+    val status = tv(
+        if (secret == null) L.t("Draw a shape for the secret window, then draw it again to set it.", "গোপন জানালার আকার আঁকুন, তারপর আবার আঁকুন।")
+        else L.t("Shape is set — draw again to change it.", "আকার সেট করা আছে — বদলাতে আবার আঁকুন।"),
+        12f, C.muted
+    )
+    c.addView(status, lp(MATCH, WRAP, t = dp(4)))
+    c.addView(
+        tv(
+            L.t("During a lock, tapping the notification opens a drawing pad. Draw your shape and a window opens with PowerLock inside — there is no Uninstall option in that window.", "লক চলাকালীন নোটিফিকেশনে ট্যাপ করলে আঁকার প্যাড খুলবে। গোপন আকার আঁকলেই জানালা খুলবে, তার ভেতরে PowerLock থাকবে — ওই জানালায় আনইনস্টল অপশন নেই।"),
+            12f, C.muted
+        ),
+        lp(MATCH, WRAP, t = dp(4))
+    )
+    val pad = ArtPadView(this)
+    pad.background = rounded(C.card2, dp(12).toFloat())
+    c.addView(pad, lp(MATCH, dp(220), t = dp(8)))
+    var pending: List<PointF>? = null
+    pad.onStrokeDone = { raw ->
+        if (raw.size < ART_MIN_POINTS) {
+            // too short to be a drawing (a tap) — ignore it
+            pad.clear()
+        } else {
+            val drawn = artNormalize(artResample(raw))
+            val first = pending
+            if (first == null) {
+                pending = drawn
+                pad.clear()
+                toast(L.t("Draw the same shape again to set it", "আবার একই আকার আঁকুন"))
+            } else {
+                val score = artMatchScore(drawn, first)
+                pending = null
+                pad.clear()
+                if (score < ART_MATCH_DIST) {
+                    val had = Extra.winSecret(this) != null
+                    Extra.setWinSecret(this, artEncode(drawn))
+                    status.text = L.t("Shape is set — draw again to change it.", "আকার সেট করা আছে — বদলাতে আবার আঁকুন।")
+                    toast(
+                        if (had) L.t("Secret shape changed", "গোপন আকার বদলানো হয়েছে")
+                        else L.t("Secret shape set", "গোপন আকার সেট হয়েছে")
+                    )
+                    go(3)
+                } else {
+                    toast(L.t("Did not match — draw your shape again", "মিলেনি — আবার আঁকুন"))
+                }
+            }
+        }
+    }
+    val clear = outlineBtn(L.t("Clear", "মুছুন"), C.muted)
+    clear.setOnClickListener {
+        pending = null
+        pad.clear()
+    }
+    c.addView(clear, lp(MATCH, dp(48), t = dp(10)))
+    if (secret != null) {
+        val remove = outlineBtn(L.t("Remove shape", "আকার মুছুন"), C.danger)
+        remove.setOnClickListener {
+            Extra.setWinSecret(this, null)
+            toast(L.t("Secret shape removed — any drawing opens the window", "আকার মুছে দেওয়া হয়েছে — যেকোনো আঁকা জানালা খুলবে"))
+            go(3)
+        }
+        c.addView(remove, lp(MATCH, dp(48), t = dp(8)))
+    }
     return c
 }
 

@@ -196,8 +196,19 @@ class KeepAliveService : Service() {
         return START_STICKY
     }
 
-    private fun openApp(): PendingIntent =
-        PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+    /**
+     * Build 137: during a lock the notification opens the secret-shape
+     * window (draw the shape -> window with the app, no uninstall option);
+     * when no lock runs it opens MainActivity directly, so there is no
+     * extra step. Different request codes so the two PendingIntents do
+     * not overwrite each other when the lock state changes.
+     */
+    private fun openApp(): PendingIntent {
+        val protecting = Store.isActive(this) || Store.isLocProtecting(this)
+        val target = if (protecting) SecretWindowActivity::class.java else MainActivity::class.java
+        val req = if (protecting) 1 else 0
+        return PendingIntent.getActivity(this, req, Intent(this, target), PendingIntent.FLAG_IMMUTABLE)
+    }
 
     private fun refresh() {
         handler.removeCallbacks(finishTask)
